@@ -93,6 +93,48 @@ using Test
         end
     end
 
+    @testset "$(rpad("the pseudoinverse undoes a derivative on the modes it can",76))" begin
+        # every term carries a nonzero x-wavenumber, so none of it is in the null space of D
+        # and the round trip is the identity rather than a projection
+        xmodes(g) = sample(g, (x, y) -> sin(x) + 0.4sin(x + y) + 0.25cos(2x - 3y))
+        for g in (spectral_grid(16), finite_difference_grid(32))
+            D⁺ = pinv(g)
+            u = xmodes(g)
+            @test maximum(abs, D⁺ * ∂x(g, u) .- u) < 1e-10
+            @test maximum(abs, ∂x(g, D⁺ * u) .- u) < 1e-10
+            # the same operator serves y, transposed, exactly as ∂y mirrors ∂x
+            v = permutedims(u)
+            @test maximum(abs, ∂y(g, v) * transpose(D⁺) .- v) < 1e-10
+        end
+    end
+
+    @testset "$(rpad("the pseudoinverse agrees with a dense SVD one",76))" begin
+        for g in (spectral_grid(16), finite_difference_grid(16))
+            D, D⁺ = Matrix(g.D), pinv(g)
+            @test maximum(abs, D⁺ .- pinv(D)) < 1e-12
+            # the four Moore-Penrose conditions, which is what "the" pseudoinverse means
+            @test maximum(abs, D * D⁺ * D .- D) < 1e-11
+            @test maximum(abs, D⁺ * D * D⁺ .- D⁺) < 1e-11
+            @test maximum(abs, transpose(D * D⁺) .- D * D⁺) < 1e-12
+            @test maximum(abs, transpose(D⁺ * D) .- D⁺ * D) < 1e-12
+        end
+    end
+
+    @testset "$(rpad("what the pseudoinverse cannot undo is the null space of D",76))" begin
+        # a constant has no derivative to invert, and at even N neither does the Nyquist
+        # mode, so D is rank N - 2 and D⁺D is a projector rather than the identity
+        for g in (spectral_grid(16), finite_difference_grid(16))
+            D⁺ = pinv(g)
+            @test rank(Matrix(g.D)) == g.N - 2
+            @test maximum(abs, D⁺ * sample(g, (x, y) -> 1.0)) < 1e-12
+            @test maximum(abs, D⁺ * sample(g, (x, y) -> cos(g.N * x / 2))) < 1e-12
+            # a projector: idempotent, and it removes exactly those two modes
+            P = D⁺ * Matrix(g.D)
+            @test maximum(abs, P * P .- P) < 1e-11
+            @test rank(P) == g.N - 2
+        end
+    end
+
     @testset "$(rpad("a grid too coarse for its own stencil is refused",76))" begin
         @test_throws ArgumentError finite_difference_grid(8)
         @test_throws ArgumentError spectral_grid(1)
