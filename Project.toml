@@ -19,26 +19,16 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [weakdeps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 
-# SimpleSplines is not registered in General, so it needs an explicit source. `[sources]` is
-# a Julia 1.11 feature, and this block is what the `julia = "1.11"` floor below exists for: on
-# 1.10 it is ignored and resolution fails with "expected package SimpleSplines to be
-# registered". Both go once SimpleSplines is *registered* — a `version` bump on `main`, 0.1.0
-# included, is not that. The tables in `docs/` and `scripts/` are separate projects; retiring
-# this one does not retire those.
-#
-# `rev` names a branch, so a `Manifest.toml` pins whatever `main` was when it last resolved
-# and never rechecks, leaving environments instantiated at different times on different
-# commits. Refresh a stale one with `Pkg.update("SimpleSplines")`; `Pkg.resolve()` treats the
-# pin as fixed and reports "Unsatisfiable requirements" against the `[compat]` bound below.
-[sources]
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
+[sources.SimpleSplines]
+rev = "main"
+url = "https://github.com/JuliaDEC/SimpleSplines.jl"
 
 [extensions]
 PoissonBracketsMakieExt = "CairoMakie"
 
 [compat]
 CairoMakie = "0.12, 0.13, 0.14, 0.15"
-CompactBasisFunctions = "0.3"
+CompactBasisFunctions = "0.3, 0.4"
 GeometricBase = "0.14.8"
 LinearAlgebra = "1"
 Printf = "1"
