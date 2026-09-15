@@ -28,7 +28,7 @@ PoissonBracketsMakieExt = "CairoMakie"
 
 [compat]
 CairoMakie = "0.12, 0.13, 0.14, 0.15"
-CompactBasisFunctions = "0.3"
+CompactBasisFunctions = "0.3, 0.4"
 GeometricBase = "0.14.8"
 LinearAlgebra = "1"
 Printf = "1"
