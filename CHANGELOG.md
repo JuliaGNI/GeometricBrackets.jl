@@ -10,6 +10,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Added — `PulledBack`, mapped domain pullback onto the parameter space
+
+`PulledBack(space, F, DF; density, tensor)` carries a physical domain's measure and metric onto
+the parameter domain a `DiscreteSpace` is built on, evaluated once at the quadrature nodes. New
+exports: `PulledBack`, `measure`, `metric`, `jacobian_residual`.
+
+**The mathematics.** A map `F` with Jacobian `J` sends an integral against `dμ = ρ(x) dx` to
+one against `m = ρ(F)|det J|`, and a Dirichlet form against a physical coefficient `A` to one
+against `𝔻 = m J⁻¹ A J⁻ᵀ`, because `∇_x = J⁻ᵀ ∇̂`:
+
+    ∫_Ω f dμ                     =  ∫ (f∘F) m dx̂
+    ∫_Ω (∇_x u)ᵀ A (∇_x v) dμ    =  ∫ (∇̂u)ᵀ 𝔻 (∇̂v) dx̂
+
+The Jacobian `DF` is a required argument and is never differenced. `jacobian_residual(F, DF, x̂)` checks a supplied Jacobian against a central
+difference of `F` — a test, not a fallback.
+
+**Why one object rather than three call sites.** `measure(pb)` is the vector to hand a
+`CollisionBracket` as its `density`; `metric(pb)` is the D×D matrix of per-node vectors that
+`tensor_weighted_matrix` takes; `nodes(pb)` are the physical coordinates `F(x̂_q)`, where a
+physical coefficient — a Grad-Shafranov mobility `M = Cr² + D` — must be sampled, not at the
+parameter nodes. A mapped assembly needs the same weight in the bracket's measure, in the
+weighted stiffness coefficient, and in any diagnostic that integrates over the domain. Supplying
+it separately to each is how a factor lands in two of them and not the third, which is a wrong
+answer rather than a failed assertion.
+
+**Invariance.** `𝔻` inherits symmetry and positive semi-definiteness from the physical
+coefficient `A`, because `J⁻¹AJ⁻ᵀ` is a congruence and `m ≥ 0`. So a metric bracket that goes
+indefinite on a mapped domain has a coefficient problem, not a geometry problem.
+
+**Measurements on an annulus**, all reproducible by `scripts/verify_pullback.jl`, on the polar
+map `F(r,θ) = (r cos θ, r sin θ)` with `r ∈ [0.4, 1.3]`, cubic, 24×48 cells, where every
+quantity has a closed form:
+
+- Supplied Jacobian against a central difference: **2.5e-10**.
+- Measure: `|det J| = r` pointwise to **4.4e-16**, and `∫ 1 dμ = 4.806636759992` against the
+  exact `π(R₁²−R₀²)` at relative **0.0**.
+- Metric: `𝔻 = diag(r, 1/r)` — the polar Laplacian's weak form — to **6.7e-16, 8.9e-16**, with
+  off-diagonals below **3.9e-16**.
+- Weak Laplacian `∫∇u·∇v dμ = −∫ v Δu dμ` for a `u` vanishing on both circles: relative
+  **3.5e-9**.
+
+**Convergence is nonvacuous.** Under refinement at 12, 24 and 48 radial cells the pullback's
+relative residual is **2.5e-7, 3.5e-9, 5.4e-11**, while the plain parameter-square stiffness
+stays at exactly 6.083e-02 and a version that keeps the measure but drops the metric stays at
+exactly 9.829e-02 at every level — each converging to its own wrong operator. The dropped-metric
+control is the error an area check cannot see, because the area never touches the metric.
+
+**Physical density.** A density given in physical coordinates is composed with the map: `ρ =
+1/|x|`, the Grad-Shafranov weight, pulled back onto the polar chart cancels `|det J| = r`
+exactly and returns measure 1 to **4.4e-16**.
+
+**The non-coordinate Grad-Shafranov disk map**, which has no closed-form metric: supplied
+Jacobian against a central difference **2.9e-9**, and area 114.776878 against the 114.777 that
+`Experiments/MetriplecticRelaxation/src/takeda.jl` obtains from its own P₁ triangulation,
+relative **1.06e-6** — the difference being a deliberate `s = 1e-3` floor, since a
+tensor-product space cannot carry the pole.
+
+**Test coverage.** `test/pullback_tests.jl` is 24 tests. One worth naming: `jacobian_residual`
+catches a **transposed** Jacobian, which leaves the determinant and therefore every area
+untouched.
+
+**Scope and integration.** This is the first half of giving PoissonBrackets a mapped-domain
+assembly. The polar `DiscreteSpace` that will use it is not in this change — it waits on
+SimpleSplines' `PolarSplineBasis` reaching `main`. `PulledBack` is independent of that and works
+on any `DiscreteSpace`, which is why it is landing first and is verified on an annulus, where a
+tensor-product space suffices.
+
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn
 
 **Comments only. No dependency, no bound and no resolved version changes.**

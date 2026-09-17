@@ -41,6 +41,10 @@ export TensorSplineSpace, tensor_weighted_matrix, domainvolume
 
 include("tensorspaces.jl")
 
+export PulledBack, measure, metric, jacobian_residual
+
+include("pullback.jl")
+
 export rref, exact_rank, kernel
 
 include("exact.jl")
