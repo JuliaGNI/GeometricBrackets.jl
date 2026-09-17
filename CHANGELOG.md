@@ -423,6 +423,29 @@ Nothing changed for an existing caller, and the whole suite passes unchanged.
 twenty-four to twenty-six.
 
 
+### Added — the grid-based Arakawa bracket, imported from ReducedBasisMethods
+
+**A relocation. Every function and struct body is byte-identical to its source**, so the diff
+reviews as a move rather than as new code. Three files arrive:
+
+- `src/poisson_tensors.jl` — `PoissonTensor`, an `N × N × N` tensor discretising the weak form
+  of `g[f,h]` on an `nx × nv` phase-space grid, and `PoissonOperator`, the weak form of
+  `f ↦ [f,h]` for a fixed Hamiltonian. Both index lazily through a stencil, so neither
+  materialises until `Base.materialize` is called.
+- `src/arakawa.jl` — `Arakawa`, the classical Arakawa stencil as a callable `(I, J, K)`
+  coefficient, held as three `OffsetArray`s of signs and a `1/(12 hx hv)` factor. It is what
+  one passes to `PoissonTensor` as its `f`.
+- `src/bracket_operators.jl` — `_apply_P_h!` and `_apply_P_ϕ!`, the same bracket applied
+  matrix-free to a vector, plus the Lenard-Bernstein-style collision stencils `_apply_C!`,
+  `_apply_Cρ!`, `_apply_Cρ²!` and `_apply_Δᵥ!` that shared the file.
+
+This is a **second, grid-based route into the package** and it is not connected to
+`DiscreteBracket`: `poisson_tensor` and `poisson_matrix` build from function spaces, these
+build from a finite-difference grid. Nothing that worked before behaves differently.
+
+New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays`, which
+now owns the `multiindex` / `_stencil_indices` helpers this code was carrying inline.
+
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn
 
 **Comments only. No dependency, no bound and no resolved version changes.**
