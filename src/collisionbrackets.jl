@@ -130,7 +130,7 @@ julia> issymmetric(b, û), degeneracy_residual(b, û) < 1e-12
 ```
 """
 struct CollisionBracket{
-    T, ST <: TensorSplineSpace{T, 2}, HT <: AbstractVecOrMat{T}, MF, MD} <:
+    T, ST <: PlanarSplineSpace{T}, HT <: AbstractVecOrMat{T}, MF, MD} <:
        MetricBracket{T}
     space::ST
     h::HT
@@ -139,7 +139,7 @@ struct CollisionBracket{
     density::Vector{T}
 end
 
-function CollisionBracket(s::TensorSplineSpace{T, 2}, h::AbstractVecOrMat{T};
+function CollisionBracket(s::PlanarSplineSpace{T}, h::AbstractVecOrMat{T};
         mobility = one(T), mobility_derivative = nothing, density = one(T)) where {T}
     size(h, 1) == nbasis(s) || throw(DimensionMismatch(
         "the generating field has $(size(h, 1)) rows but the space has $(nbasis(s)) " *
@@ -171,18 +171,18 @@ function _mobility_pair(::Type{T}, mobility, mobility_derivative) where {T}
         _as_mobility(T, something(mobility_derivative, zero(T))))
 end
 
-function _density_samples(s::TensorSplineSpace{T}, ρ::Number) where {T}
+function _density_samples(s::PlanarSplineSpace{T}, ρ::Number) where {T}
     fill(T(ρ), length(quadrature_weights(s)))
 end
 
-function _density_samples(s::TensorSplineSpace{T}, ρ::AbstractVector) where {T}
+function _density_samples(s::PlanarSplineSpace{T}, ρ::AbstractVector) where {T}
     length(ρ) == length(quadrature_weights(s)) || throw(DimensionMismatch(
         "the measure density was sampled at $(length(ρ)) points but the quadrature grid " *
         "has $(length(quadrature_weights(s)))"))
     Vector{T}(ρ)
 end
 
-function _density_samples(s::TensorSplineSpace{T}, ρ) where {T}
+function _density_samples(s::PlanarSplineSpace{T}, ρ) where {T}
     T[ρ(x) for x in quadrature_nodes(s)]
 end
 
@@ -291,7 +291,7 @@ cross term ``\int \! \int \kappa \, \nabla \Phi_K(x)^T Q_2 \nabla \Phi_L(x') `` 
 ``N``-vector per separable factor instead. There are nine such factors and eight
 accumulators — rank at most nine, independent of the mesh.
 """
-function _cross_factors(s::TensorSplineSpace, c::AbstractVector, γ)
+function _cross_factors(s::PlanarSplineSpace, c::AbstractVector, γ)
     P = (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
     S = ntuple(j -> P[j] * c, 2)
     𝕋 = [P[i] * (c .* γ[j]) for i in 1:2, j in 1:2]
@@ -356,7 +356,7 @@ function _collision_operator_derivative(b::CollisionBracket{T}, st, δγ, δc, �
     _cross_operator(f, δf)
 end
 
-function _cross_factors_derivative(s::TensorSplineSpace, c, γ, δc, δγ)
+function _cross_factors_derivative(s::PlanarSplineSpace, c, γ, δc, δγ)
     P = (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
     S = ntuple(j -> P[j] * δc, 2)
     𝕋 = [P[i] * (δc .* γ[j] .+ c .* δγ[j]) for i in 1:2, j in 1:2]

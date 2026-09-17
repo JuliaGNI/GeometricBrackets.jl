@@ -77,6 +77,80 @@ SimpleSplines' `PolarSplineBasis` reaching `main`. `PulledBack` is independent o
 on any `DiscreteSpace`, which is why it is landing first and is verified on an annulus, where a
 tensor-product space suffices.
 
+### Added — `PolarSplineSpace`, a `DiscreteSpace` on a parameter square with a pole
+
+`PolarSplineSpace` wraps SimpleSplines' `PolarSplineBasis`: a two-dimensional space on a
+parameter square whose left radial edge is a **pole**, one point of the physical domain reached
+from every angle, as on a mapped disk. It is `C⁰` and `C¹` there by construction, where a
+tensor-product space is not even `C⁰` — the map collapses the whole circle `s = 0` to a point,
+and nothing constrains a tensor-product basis's `θ`-dependence on it.
+
+Constructed from a `PolarSplineQuadrature`, a `PolarSplineBasis`, a radial and angular basis
+pair, or `PolarSplineSpace((ns, nθ), p)` for a cell count per axis and a degree. New exports:
+`PolarSplineSpace`, and `pole`, `pole_triangle` and `pseudo_cartesian` forwarded from the basis.
+
+**The interface is the same.** Every generic assembly of `spaces.jl` runs on it unchanged,
+because the three things they are written against have the same shapes as on
+`TensorSplineSpace`: `basis_values(s, d)` is a sparse `N × Q` table over the flattened
+quadrature grid, `quadrature_weights(s)` is the matching flat vector, and
+`mass_factorization(s)` answers `\`. It also answers `mixed_matrix`, `weighted_matrix`,
+`derivative_matrix`, `stiffness_matrix`, `tensor_weighted_matrix`, `inverse_mass_matrix`,
+`evaluate` and `field`, with per-axis derivative multi-indices throughout.
+
+**Three things differ**, all consequences of a pole function reaching around the whole angular
+axis. There is no `size(s)` and a coefficient vector is never reshaped, because the index set is
+not a product. `mass_factorization` is a sparse Cholesky rather than a `KroneckerMass`. And
+`inverse_mass_matrix` has no Kronecker shortcut and is a dense `N × N` solve.
+
+**The space integrates against the parameter measure**, exactly as `TensorSplineSpace`
+integrates against `dx`. A mapped domain's measure and metric are the map's and not the space's,
+and come from `PulledBack`. That is what makes the two spaces mean the same thing by the same
+method names.
+
+### Changed — `CollisionBracket` takes any planar spline space
+
+Its type constraint was `TensorSplineSpace{T, 2}`, which is stronger than the code: the bracket
+asks only for `nbasis`, `quadrature_nodes` as a vector of pairs, `quadrature_weights`,
+`basis_values(s, d::NTuple{2,Int})` and `field`. It is now
+`PlanarSplineSpace{T} = Union{TensorSplineSpace{T, 2}, PolarSplineSpace{T}}` — a union rather
+than an abstract type, because the two share no supertype below `DiscreteSpace` and
+`DiscreteSpace` carries no dimension parameter to constrain. A third planar space joins by being
+added to that union and needs no other change.
+
+Nothing changed for an existing caller, and the whole suite passes unchanged.
+
+**Measurements**, reproducible by `scripts/verify_polar_bracket.jl`, 24 checks:
+
+- **The pulled-back Laplacian on the whole unit disk, pole included** — a question no
+  tensor-product space can be asked. `u = 1 − s²` is radial, so it is in the polar space
+  exactly (projection error 5.6e-15), it vanishes on the rim, and `∫|∇u|² dx = 2π` in closed
+  form. Assembled at 32×64 cubic cells the relative error is **3.1e-14**, and the measure alone
+  gives the disk's area `π` to 1e-12. The metric coefficient is `diag(s, 1/s)` and is singular
+  at the pole: that is the true polar Laplacian, integrable because a `C¹` function has
+  `∂_θu = O(s)`, and no quadrature node sits at `s = 0`.
+- **A radial test field cannot detect a dropped angular metric.** With the metric dropped to
+  `|det J|` times the identity, `u = 1 − s²` gives *exactly* the right answer, because
+  `∂_θu = 0` and the `θθ` component never appears. The same control is 20 % wrong on a field
+  with angular structure, which is why it is run on both. The plain parameter-square stiffness,
+  with no pullback at all, is 33 % wrong.
+- **The `CollisionBracket`'s structural properties survive the space change**, against the
+  parameter measure and against `eq:mapping`'s `dμ = dr dz / r` alike: symmetry 3.5e-16,
+  `λmin/λmax` −1.1e-17, degeneracy `(F,H)` 4.0e-17, against a wrong-generator control at 1.13.
+  It is singular and not definite, as it must be.
+- **Two controls that must break it.** A sign-changing mobility — `eq:M-condition` requires
+  `M > 0` and nothing enforces it — drives `λmin/λmax` to −1.0. Replacing `z⊥ ⊗ z⊥` by `z ⊗ z`
+  in an `O(Nq²)` reference keeps symmetry at 6.5e-17 and semidefiniteness at +5.1e-16 and
+  breaks **only** the degeneracy, 1.5e-14 → 4.2e-01. That reference is first checked against
+  the package's own collapsed form, or the control would establish nothing. Note that the
+  control must be fed the *unperped* gradient: given the perped one, `z ⊗ z` reconstructs
+  `z⊥ ⊗ z⊥` and cannot fail.
+- **The recentring regime.** At generating-field spreads of 1e-3, 1e-5 and 1e-7 — a relaxed
+  Grad-Shafranov state — the centred `𝔻_s` stays positive semi-definite, `λmin/λmax` at or
+  above −3.2e-17, with the degeneracy at 3.5e-16.
+
+`test/polarspaces_tests.jl` is 54 tests.
+
+
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn
 
 **Comments only. No dependency, no bound and no resolved version changes.**

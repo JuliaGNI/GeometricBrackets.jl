@@ -18,7 +18,8 @@ import LinearAlgebra: issymmetric
 import SimpleSplines: basis, basis_integrals, basis_values, degree, domainlength,
                       evaluate, l2_projection, mass_factorization, mass_matrix,
                       mass_operator, mass_solve!, mixed_matrix, nbasis,
-                      ncells, nodes, order, quadrature_nodes, quadrature_weights
+                      ncells, nodes, order, quadrature_nodes, quadrature_weights,
+                      pole, pole_triangle, pseudo_cartesian
 
 # Re-exported rather than defined: the LAPACK-backed factorisation lives in SimpleSolvers
 # as of 0.12.2, but it is this package's default `linear_solver_method`, so it has to be
@@ -40,6 +41,10 @@ include("spaces.jl")
 export TensorSplineSpace, tensor_weighted_matrix, domainvolume
 
 include("tensorspaces.jl")
+
+export PolarSplineSpace, pole, pole_triangle, pseudo_cartesian
+
+include("polarspaces.jl")
 
 export PulledBack, measure, metric, jacobian_residual
 
