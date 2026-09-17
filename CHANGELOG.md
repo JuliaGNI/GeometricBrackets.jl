@@ -71,11 +71,10 @@ tensor-product space cannot carry the pole.
 catches a **transposed** Jacobian, which leaves the determinant and therefore every area
 untouched.
 
-**Scope and integration.** This is the first half of giving PoissonBrackets a mapped-domain
-assembly. The polar `DiscreteSpace` that will use it is not in this change — it waits on
-SimpleSplines' `PolarSplineBasis` reaching `main`. `PulledBack` is independent of that and works
-on any `DiscreteSpace`, which is why it is landing first and is verified on an annulus, where a
-tensor-product space suffices.
+**Scope.** `PulledBack` needs no polar space and works on **any** `DiscreteSpace`, which is why
+it is verified here on an annulus — the same coordinate map with the pole cut out, where a
+tensor-product space suffices and every quantity has a closed form. The polar space that uses
+it is the next entry.
 
 ### Added — `PolarSplineSpace`, a `DiscreteSpace` on a parameter square with a pole
 

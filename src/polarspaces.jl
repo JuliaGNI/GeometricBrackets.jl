@@ -37,9 +37,11 @@ per-axis multi-index and a scalar `d ≥ 1` is rejected rather than resolved to 
 Three things differ, all of them consequences of a pole function reaching around the whole
 angular axis:
 
-  - **The index set is not a product.** There is no `size(s)`, and a coefficient vector is not
-    reshaped into an array anywhere — `evaluate` takes the vector as it is. The flattening
-    still runs the radial axis fastest, which is the convention of every table here.
+  - **The index set is not a product.** There is no `size(s)` and no `nodes(s)`, and a
+    coefficient vector is not reshaped into an array anywhere — `evaluate` takes the vector as
+    it is. The three pole functions belong to no radial index and to no angular one, so
+    neither a shape nor a per-degree-of-freedom coordinate exists. The flattening still runs
+    the radial axis fastest, which is the convention of every table here.
   - **There is no `KroneckerMass`.** `mass_factorization` is a sparse Cholesky, so a solve is
     ``O(N^{3/2})`` rather than ``D`` one-dimensional solves. Measured at ``64 \times 128``
     cubic cells: 0.74 ms against 0.136 ms for the tensor-product space at the same mesh, and
@@ -103,7 +105,6 @@ nbasis(s::PolarSplineSpace) = nbasis(s.quadrature)
 degree(s::PolarSplineSpace) = degree(basis(s))
 order(s::PolarSplineSpace) = order(basis(s))
 ncells(s::PolarSplineSpace) = ncells(basis(s))
-nodes(s::PolarSplineSpace) = nodes(basis(s))
 Base.ndims(::PolarSplineSpace) = 2
 
 """
@@ -262,7 +263,7 @@ The dense inverse mass matrix ``\mathbb{M}^{-1}``, formed **on every call** and 
 There is no Kronecker shortcut here — the pole rows are what break it — so this is an
 ``N \times N`` solve against the sparse Cholesky, and the storage is ``N^2``: at
 ``N = 8323`` that is 554 MB. It exists because the generic assemblies of `spaces.jl` name it,
-and it is the wrong thing to call in a loop. [`mass_factorization`](@ref) returns the
+and it is the wrong thing to call in a loop. `mass_factorization` returns the
 factorisation, and `\`, `mass_solve!`, [`project`](@ref) and [`project!`](@ref) all go through
 it without forming this matrix.
 """

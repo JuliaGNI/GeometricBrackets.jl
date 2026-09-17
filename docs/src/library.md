@@ -33,6 +33,20 @@ Modules = [PoissonBrackets]
 Pages = ["tensorspaces.jl"]
 ```
 
+## Polar spaces — `polarspaces.jl`
+
+```@autodocs
+Modules = [PoissonBrackets]
+Pages = ["polarspaces.jl"]
+```
+
+## Mapped domains — `pullback.jl`
+
+```@autodocs
+Modules = [PoissonBrackets]
+Pages = ["pullback.jl"]
+```
+
 ## Brackets — `brackets.jl`
 
 `Pages` is matched against the *end* of each source path, so this filter has to be qualified:

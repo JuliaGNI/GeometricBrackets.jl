@@ -78,6 +78,10 @@ struct PulledBack{T, D}
         m = Vector{T}(undef, Q)
         𝔻 = [Vector{T}(undef, Q) for _ in 1:D, _ in 1:D]
 
+        # the default coefficient is loop-invariant, so it is built once rather than at each
+        # of the Q nodes; `\` copies its right-hand side, so the one matrix is not consumed
+        A₀ = Matrix{T}(I, D, D)
+
         for q in 1:Q
             J = _jacobian_matrix(DF(x̂[q]), D)
             detJ = abs(det(J))
@@ -86,7 +90,7 @@ struct PulledBack{T, D}
             # m J⁻¹ A J⁻ᵀ, formed as a solve rather than an explicit inverse: at D = 2 or 3
             # the difference is not the arithmetic but that `\` is the one spelling which
             # says what is meant and cannot be transposed by accident.
-            A = tensor === nothing ? Matrix{T}(I, D, D) : Matrix{T}(tensor(x[q]))
+            A = tensor === nothing ? A₀ : Matrix{T}(tensor(x[q]))
             G = m[q] * (J \ A) / J'
 
             for k in 1:D, l in 1:D
@@ -119,7 +123,7 @@ _density_vector(ρ, x, Q) = [ρ(pt) for pt in x]
     nodes(pb::PulledBack)
 
 The **physical** coordinates ``F(\\hat{x}_q)`` of the quadrature nodes, in the flattened order
-of [`quadrature_weights`](@ref).
+of `quadrature_weights`.
 
 This is what a physical field is sampled at. A mobility written in physical coordinates — the
 Grad-Shafranov ``M = Cr^2 + D`` — is evaluated here and not at the parameter nodes, and the
@@ -164,8 +168,13 @@ end
 @doc raw"""
     jacobian_residual(F, DF, x̂; h = 1e-6)
 
-The largest relative discrepancy between the supplied Jacobian `DF` and a central difference
-of `F`, over the parameter points `x̂`.
+The largest discrepancy between the supplied Jacobian `DF` and a central difference of `F`,
+over the parameter points `x̂`, taken **relative to the difference where that exceeds one and
+absolute where it does not**.
+
+The mixed measure is deliberate: a map's Jacobian has entries that pass through zero — the
+polar chart's ``\partial r / \partial \theta`` does, at two angles out of every four — and a
+relative comparison there divides by round-off and reports a failure that is not one.
 
 The guard against a slip in the algebra of a hand-derived Jacobian. It is a **check**, and the
 difference is never used in an assembly: a truncation error of order ``h^2`` inside a stiffness
