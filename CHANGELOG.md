@@ -69,7 +69,8 @@ tensor-product space cannot carry the pole.
 
 **Test coverage.** `test/pullback_tests.jl` is 24 tests. One worth naming: `jacobian_residual`
 catches a **transposed** Jacobian, which leaves the determinant and therefore every area
-untouched.
+untouched. `scripts/verify_pullback.jl` is registered in `scripts/run_all.jl` and indexed in
+`docs/src/scripts.md`.
 
 **Scope.** `PulledBack` needs no polar space and works on **any** `DiscreteSpace`, which is why
 it is verified here on an annulus — the same coordinate map with the pole cut out, where a
@@ -147,7 +148,9 @@ Nothing changed for an existing caller, and the whole suite passes unchanged.
   Grad-Shafranov state — the centred `𝔻_s` stays positive semi-definite, `λmin/λmax` at or
   above −3.2e-17, with the degeneracy at 3.5e-16.
 
-`test/polarspaces_tests.jl` is 54 tests.
+`test/polarspaces_tests.jl` is 54 tests. `scripts/verify_polar_bracket.jl` is registered in
+`scripts/run_all.jl` and indexed in `docs/src/scripts.md`, whose script counts move from
+twenty-four to twenty-six.
 
 
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn

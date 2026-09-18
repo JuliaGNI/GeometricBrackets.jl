@@ -17,7 +17,7 @@
 # Both are then repeated against the measure of `eq:mapping`, which is the configuration the
 # Grad-Shafranov case C2 actually runs in.
 #
-# Run: julia --project=. --startup-file=no scripts/verify_polar_bracket.jl
+# Run: julia --project=scripts --startup-file=no scripts/verify_polar_bracket.jl
 
 using LinearAlgebra
 using Printf
@@ -263,12 +263,11 @@ println()
 println("4. the recentring regime: large mean gradient, small variation")
 println()
 
+b = CollisionBracket(sp, flat.Λ; density = measure(pbgs))
+
 for spread in (1e-3, 1e-5, 1e-7)
     # A state whose generating field has a large mean gradient and a variation of `spread`.
-    û = [1.0 for _ in 1:nbasis(sp)]
-    û .+= spread .* randn(nbasis(sp))
     ĥ = flat.Λ \ project(sp, x -> 12 * x[1] + spread * sin(5 * x[2]))
-    b = CollisionBracket(sp, flat.Λ; density = measure(pbgs))
     λ = eigvals(Symmetric(metric_matrix(b, ĥ)))
     @printf("  spread %.0e   λmin/λmax = %+.3e   degeneracy %.3e\n",
         spread, minimum(λ) / maximum(λ), degeneracy_residual(b, ĥ))

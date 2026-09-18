@@ -18,7 +18,7 @@
 # checked on the one number that is known independently: the area of its image, 114.777, from
 # `Experiments/MetriplecticRelaxation/src/takeda.jl`.
 #
-# Run: julia --project=. --startup-file=no scripts/verify_pullback.jl
+# Run: julia --project=scripts --startup-file=no scripts/verify_pullback.jl
 
 using LinearAlgebra
 using Printf
