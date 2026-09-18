@@ -4,12 +4,12 @@ CurrentModule = PoissonBrackets
 
 # The verification scripts
 
-`scripts/` holds twenty-six `verify_*.jl` scripts that machine-verify the claims of the three
+`scripts/` holds twenty-seven `verify_*.jl` scripts that machine-verify the claims of the three
 manuscripts, two that draw their figures, one exploratory search, a driver and four shared
-helper modules — thirty-four files, plus the seven in `fable/`. Eighteen of the verification
+helper modules — thirty-five files, plus the seven in `fable/`. Eighteen of the verification
 scripts are converted Python prototypes that used to live in the manuscripts' `Scripts/`
 directories; [Verification](@ref) records the agreement claim by claim and the errata the
-comparison turned up. The four `verify_fourbracket_*` scripts and the four of the metric-bracket
+comparison turned up. The four `verify_fourbracket_*` scripts and the five of the metric-bracket
 half had no Python ancestor — they arrived as standalone Julia, or alongside the Julia
 implementation itself.
 
@@ -20,7 +20,7 @@ why the entries here are one line long.
 ## Running them
 
 ```sh
-julia --project=scripts scripts/run_all.jl          # all twenty-six; nonzero exit on failure
+julia --project=scripts scripts/run_all.jl          # all twenty-seven; nonzero exit on failure
 julia --project=scripts scripts/verify_kdv_bea.jl   # or just one
 sh scripts/run_fable.sh                             # the seven fable scripts, about 13 minutes
                                                     # (longer the first time: one of them needs SymPy)
@@ -135,6 +135,7 @@ needs. None of these scripts had a Python ancestor.
 | `verify_metriplectic_flow.jl` | that ``H`` is conserved by the bracket's degeneracy rather than by the integrator and ``S`` falls by semi-definiteness alone; `metric_directional` against the ``O(N^3)`` tensor contracted by hand, with the speedup ratios for all four brackets; and why Newton must be run to a residual tolerance rather than to a fixed iteration count | [`MetriplecticFlow`](@ref) |
 | `verify_pullback.jl` | that the pullback of a mapped domain's measure and metric is the right one: on an annulus, where ``\lvert\det J\rvert = r`` and ``\mathbb{D} = \mathrm{diag}(r, 1/r)`` in closed form, and the weak Laplacian ``\int\nabla u\cdot\nabla v \,d\mu = -\int v\Delta u \,d\mu`` converges under refinement while a plain stiffness and a dropped metric each sit at their own wrong constant | [`PulledBack`](@ref) |
 | `verify_polar_bracket.jl` | that a bracket survives the pole: ``\int\lvert\nabla u\rvert^2 dx = 2\pi`` on the whole unit disk, a question no tensor-product space can be asked, and that symmetry, semi-definiteness and degeneracy all hold on the polar space — with a wrong generator, a sign-changing mobility and a ``z\otimes z`` kernel as the controls that break exactly one property each | [`PolarSplineSpace`](@ref) |
+| `verify_frame_covariance.jl` | that [`CollisionBracket`](@ref) reads the **physical** frame on a mapped domain: against the ``O(N_q^2)`` double sum of its own definition, with the physical gradient written out from the polar chart by hand, on an annulus and again on the `PolarSplineSpace` through the pole; and against itself under a reparametrisation. The frame dropped and the frame transposed are the two controls, each an ``O(1)`` different operator — and symmetry, semi-definiteness and degeneracy hold for **both** of them, which is why covariance is a separate check. It also measures how far the reparametrisation check reaches: a linear family has a constant ``J``, and for a constant ``J`` the bracket depends on the frame only through ``\lvert\det J\rvert``, so a transposed frame passes it exactly | [`MappedFrame`](@ref) |
 
 ## The fable investigation
 

@@ -18,7 +18,7 @@ checked against.
 ## Method
 
   - Julia: `julia --project=. -e 'using Pkg; Pkg.test()'`, then
-    `julia --project=scripts scripts/run_all.jl`, which runs all twenty-six verification
+    `julia --project=scripts scripts/run_all.jl`, which runs all twenty-seven verification
     scripts and exits nonzero if any check fails. `search_dirac_variants.jl` is exploratory
     and slow, and is excluded from that driver as it was from `run_all.sh`; run it by hand.
   - Figures: `julia --project=scripts scripts/kdv.jl` and `scripts/kdv_bea_sweep.jl`, both of

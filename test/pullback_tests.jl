@@ -95,6 +95,32 @@ using Test
         @test abs(dropped - exact) / abs(exact) > 1e-2
     end
 
+    @testset "$(rpad("the frame is J⁻ᵀ, and the volume element is |det J|",76))" begin
+        𝔽 = frame(pb)
+
+        # J⁻ᵀ for the polar chart is [cos θ  sin θ; −sin θ/r  cos θ/r], so ∇_x = J⁻ᵀ∇̂ is the
+        # textbook ∂ₓ = cos θ ∂_r − (sin θ/r) ∂_θ.
+        for q in [1, 37, 400, length(w)]
+            r, θ = x̂[q]
+            @test abs(𝔽[1, 1][q] - cos(θ)) < 1e-14
+            @test abs(𝔽[1, 2][q] + sin(θ) / r) < 1e-14
+            @test abs(𝔽[2, 1][q] - sin(θ)) < 1e-14
+            @test abs(𝔽[2, 2][q] - cos(θ) / r) < 1e-14
+        end
+
+        # The frame is not symmetric here, which is what makes a transposed Jacobian a
+        # different object rather than the same one.
+        @test maximum(abs, 𝔽[1, 2] .- 𝔽[2, 1]) > 1
+
+        # The volume element is the measure with the density left out, and the two are not
+        # the same vector wherever the density is not one.
+        @test all(abs(volume_element(pb)[q] - x̂[q][1]) < 1e-14 for q in eachindex(w))
+        pbρ = PulledBack(s, F, DF; density = x -> 1 / hypot(x[1], x[2]))
+        @test volume_element(pbρ) ≈ volume_element(pb)
+        @test maximum(abs, measure(pbρ) .- volume_element(pbρ)) > 0.1
+        @test all(abs(measure(pbρ)[q] - 1) < 1e-13 for q in eachindex(w))
+    end
+
     @testset "$(rpad("jacobian_residual catches a wrong Jacobian",76))" begin
         @test jacobian_residual(F, DF, x̂[1:200]) < 1e-8
 

@@ -21,22 +21,22 @@ and a Dirichlet form against a physical coefficient ``\mathbb{A}`` to
       (\hat\nabla v) \, d\hat{x} ,
 ```
 
-because ``\nabla_x = J^{-T} \hat\nabla``. This type holds ``m`` and ``\mathbb{D}`` at the
-quadrature nodes, and the physical coordinates ``F(\hat{x}_q)`` that a physical field is
-sampled at.
+because ``\nabla_x = J^{-T} \hat\nabla``. This type holds ``m``, ``|\det J|``, ``\mathbb{D}``
+and ``J^{-T}`` at the quadrature nodes, and the physical coordinates ``F(\hat{x}_q)`` that a
+physical field is sampled at.
 
 # Why one object rather than three call sites
 
-A mapped assembly needs the same weight in three places — the measure a metric bracket
-integrates against, the tensor coefficient of the weighted stiffness, and any diagnostic that
-integrates over the domain. Supplying it separately to each is how a factor ends up in two of
-them and not the third, which is a wrong answer rather than a failed assertion. Here they are
-computed once, from one map and one density, and read off:
+A mapped assembly needs the same geometry in several places — the measure a metric bracket
+integrates against, the tensor coefficient of the weighted stiffness, the frame a gradient is
+read in, and any diagnostic that integrates over the domain. Supplying it separately to each
+is how a factor ends up in two of them and not the third, which is a wrong answer rather than
+a failed assertion. Here they are computed once, from one map and one density, and read off:
 
 ```julia
 pb = PulledBack(space, F, DF; density = ρ)
 K  = tensor_weighted_matrix(space, metric(pb))        # ∫ ∇u·∇v dμ, pulled back
-G  = CollisionBracket(space, Λ; density = measure(pb))
+G  = CollisionBracket(space, Λ, pb)                   # measure, frame and pairing together
 ∫f = dot(quadrature_weights(space) .* measure(pb), f) # any integral over the domain
 ```
 
@@ -64,7 +64,9 @@ orientation is not an error.
 struct PulledBack{T, D}
     nodes::Vector{NTuple{D, T}}
     measure::Vector{T}
+    volume::Vector{T}
     metric::Matrix{Vector{T}}
+    frame::Matrix{Vector{T}}
 
     function PulledBack(s::DiscreteSpace{T}, F, DF;
             density = nothing, tensor = nothing) where {T}
@@ -76,30 +78,46 @@ struct PulledBack{T, D}
         ρ = _density_vector(density, x, Q)
 
         m = Vector{T}(undef, Q)
+        v = Vector{T}(undef, Q)
         𝔻 = [Vector{T}(undef, Q) for _ in 1:D, _ in 1:D]
+        𝔽 = [Vector{T}(undef, Q) for _ in 1:D, _ in 1:D]
 
-        # the default coefficient is loop-invariant, so it is built once rather than at each
+        # the identity serves twice, as the default coefficient and as the right-hand side the
+        # frame is solved for. Both are loop-invariant, so it is built once rather than at each
         # of the Q nodes; `\` copies its right-hand side, so the one matrix is not consumed
         A₀ = Matrix{T}(I, D, D)
 
         for q in 1:Q
             J = _jacobian_matrix(DF(x̂[q]), D)
             detJ = abs(det(J))
+            v[q] = detJ
             m[q] = ρ[q] * detJ
+
+            # one factorisation of J serves both solves against it below; only the right
+            # division by J' still factors on its own, so a node pays two rather than three.
+            # The frame is therefore read off J's factorisation and no longer off J''s, and
+            # the two pivot differently: it agrees to at most 2 ulp rather than bit for bit.
+            Jf = lu(J)
 
             # m J⁻¹ A J⁻ᵀ, formed as a solve rather than an explicit inverse: at D = 2 or 3
             # the difference is not the arithmetic but that `\` is the one spelling which
             # says what is meant and cannot be transposed by accident.
             A = tensor === nothing ? A₀ : Matrix{T}(tensor(x[q]))
-            G = m[q] * (J \ A) / J'
+            G = m[q] * (Jf \ A) / J'
+
+            # J⁻ᵀ itself, which a caller that differentiates rather than integrates needs:
+            # the metric above has the measure and the coefficient folded in and cannot be
+            # taken apart again.
+            invJᵀ = transpose(Jf \ A₀)
 
             for k in 1:D, l in 1:D
 
                 𝔻[k, l][q] = G[k, l]
+                𝔽[k, l][q] = invJᵀ[k, l]
             end
         end
 
-        new{T, D}(x, m, 𝔻)
+        new{T, D}(x, m, v, 𝔻, 𝔽)
     end
 end
 
@@ -141,6 +159,35 @@ the domain is `dot(quadrature_weights(space) .* measure(pb), f)`. It is the vect
 [`CollisionBracket`](@ref) as its `density`.
 """
 measure(pb::PulledBack) = pb.measure
+
+@doc raw"""
+    volume_element(pb::PulledBack)
+
+The volume element ``|\det J|`` at the quadrature nodes — the **plain** physical measure
+``dx`` against the parameter quadrature, with the density left out.
+
+[`measure`](@ref) is ``\rho \, |\det J|`` and cannot be divided back down: ``\rho`` may
+vanish, and a caller that needs both weights should not be reconstructing one from the other.
+The two are different integrals, and the Grad-Shafranov discretisation needs both — the
+bracket integrates against ``d\mu = \rho \, dx`` while the pairing that defines a functional
+derivative is against ``dx``.
+"""
+volume_element(pb::PulledBack) = pb.volume
+
+@doc raw"""
+    frame(pb::PulledBack)
+
+The inverse transpose Jacobian ``J^{-T}`` at the quadrature nodes, as the ``D \times D``
+matrix of per-node vectors.
+
+This is the matrix that carries a parameter gradient to the physical one,
+``\nabla_x = J^{-T} \hat\nabla``. A space's derivative tables are parameter derivatives, so
+anything that reads a *direction* rather than integrating a scalar — a perpendicular, a
+rotation, a cross product — needs this and is wrong without it. [`metric`](@ref) does not
+serve: it has the measure and the physical coefficient folded in, and a congruence cannot be
+taken apart again.
+"""
+frame(pb::PulledBack) = pb.frame
 
 @doc raw"""
     metric(pb::PulledBack)

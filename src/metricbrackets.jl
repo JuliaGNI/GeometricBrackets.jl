@@ -209,6 +209,7 @@ _apply_generator(Λ::AbstractMatrix, û::AbstractVector) = Λ * û
 
 @doc raw"""
     _mass_sandwich(space, A)
+    _mass_sandwich(factorization, A)
 
 The dense ``\mathbb{M}^{-1} \mathbb{A} \mathbb{M}^{-1}`` that turns a weak-form operator into
 a bracket on the degrees of freedom, formed through the mass *factorisation* rather than
@@ -217,10 +218,17 @@ through [`inverse_mass_matrix`](@ref).
 ``\mathbb{M}`` is symmetric, so the second factor is the same column solve applied to the
 transpose. On a [`TensorSplineSpace`](@ref) that is ``D`` one-dimensional solves per column
 against the ``N^2`` storage and ``O(N^3)`` product an explicit inverse would cost twice over.
+
+A space names its own mass matrix, which is the pairing every bracket on an unmapped domain
+uses. The second form takes the factorisation directly, for a bracket whose pairing is a
+mapped one and therefore not the space's.
 """
-function _mass_sandwich(s::DiscreteSpace, A::AbstractMatrix)
-    F = mass_factorization(s)
+function _mass_sandwich(F, A::AbstractMatrix)
     permutedims(_mass_solve(F, permutedims(_mass_solve(F, A))))
+end
+
+function _mass_sandwich(s::DiscreteSpace, A::AbstractMatrix)
+    _mass_sandwich(mass_factorization(s), A)
 end
 
 function _mass_solve(F, A::AbstractMatrix{T}) where {T}

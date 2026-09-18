@@ -46,7 +46,7 @@ export PolarSplineSpace, pole, pole_triangle, pseudo_cartesian
 
 include("polarspaces.jl")
 
-export PulledBack, measure, metric, jacobian_residual
+export PulledBack, measure, volume_element, metric, frame, jacobian_residual
 
 include("pullback.jl")
 

@@ -54,7 +54,8 @@ const SCRIPTS = [
     # the mapped domain: the pullback of a measure and a metric, and the polar space that
     # carries a bracket across the pole the tensor-product spaces cannot reach
     "verify_pullback.jl",
-    "verify_polar_bracket.jl"
+    "verify_polar_bracket.jl",
+    "verify_frame_covariance.jl"
 ]
 
 const RULE = "="^67

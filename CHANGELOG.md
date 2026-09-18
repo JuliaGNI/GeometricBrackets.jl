@@ -10,6 +10,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Fixed — `CollisionBracket` is now frame-covariant on a mapped domain
+
+`CollisionBracket` was not frame-covariant. Its assembly read the space's own derivative tables,
+which are parameter derivatives `∂̂`, and it assembled against those tables unchanged. On an
+unmapped domain those *are* the physical derivatives, so every §5.4 run and the Grad-Shafranov
+box were and remain correct. On a mapped domain with Jacobian `J`, the physical gradient is
+`∇_x = J⁻ᵀ ∇̂`, and the bracket assembled in the wrong frame — `∂̂` instead of `J⁻ᵀ ∂̂` —
+produces wrong numbers while still passing every structural check.
+
+**The four things that move.** The bracket now takes an optional third positional argument,
+
+```julia
+CollisionBracket(space, Λ, pb::PulledBack; mobility, mobility_derivative)
+```
+
+which supplies the measure `m = ρ|det J|`, the frame `J⁻ᵀ`, the plain physical mass matrix
+`∫Φ_K Φ_L |det J| dx̂` (not `ρ|det J|`), and the physical quadrature nodes `F(x̂_q)` where a
+mobility `M(x, u)` is sampled. The keyword form with `density` is unchanged and remains right on
+unmapped domains.
+
+1. The assembly's derivative tables become `∇_x Φ_K = J⁻ᵀ ∇̂ Φ_K`.
+2. Perping does not commute with a general linear change of coordinates: the perpendicular
+   gradient `β = (∇φ)⊥` is a *direction*, not a rescaled one, so `J⁻ᵀ ∇̂φ` and then perp.
+3. The local tensor coefficient is conjugated `J⁻¹ 𝔻 J⁻ᵀ`, and the mass sandwich uses the
+   plain physical mass matrix `∫Φ_K Φ_L |det J| dx̂` rather than the space's parameter-measure one.
+   This keeps energy conservation structural: `𝔾 ∂H/∂û = 0` holds exactly when the `𝕄` of the
+   sandwich is the `𝕄` the caller's `∂H/∂û` carries.
+4. A `mobility` function is sampled at the physical points `F(x̂_q)` rather than at the parameter
+   nodes, so `M = Cr² + D` is written in the coordinates it belongs to.
+
+New non-exported type `MappedFrame` holds the four things together so they cannot be applied to
+three places out of four. New exports on `PulledBack`: `frame(pb)`, the inverse transpose Jacobian
+`J⁻ᵀ` at the quadrature nodes, and `volume_element(pb)`, the plain `|det J|` — `measure(pb)` is
+`ρ|det J|` and cannot be divided back down. `_mass_sandwich` gained a method taking a
+factorisation directly.
+
+**Structural checks cannot see this.** Symmetry, positive semi-definiteness and the degeneracy
+`(F,H) = 0` are algebraic properties of `Q₂(z) = z⊥⊗z⊥` and of its annihilation of `z`; they
+say nothing about which `z` was handed in, and they hold in every parametrisation. A bracket
+assembled in the wrong frame passes all of them. The check that does discriminate is covariance:
+the same physical problem written in two parametrisations must give the same operator.
+
+**Covariance under a linear reparametrisation**, one physical problem on `[1,2]×[0,1]` written
+as `F_a(x̂) = (x̂₁ + σ a x̂₂, a x̂₂)` on `[1,2]×[0,1/a]`. The physical domain, the physical basis
+and the coefficient vector are independent of `a`. With `σ = 0` and unit density this reproduces
+the plain-bracket case: `∫u dx` identical to twelve figures at **0.4053744627**, the frameless
+bracket's norm in the ratio **1 : 16 : 256** at scales 1, 2, 4 — the fourth power — and the
+framed bracket invariant to **6.1e-16**. With a shear `σ = 0.7`, a `1/r` density and a
+state-dependent mobility, the framed bracket is invariant to **3.1e-16** while the frameless one
+differs by **1.50e+01** and **2.55e+02**, and by **3.674e-01** relative to the framed bracket at
+scale 1.
+
+But a linear family is necessary and not sufficient. A reparametrisation that preserves a spline
+space is affine, so `J` is constant, and for a constant `J` the whole bracket collapses to
+`(det J⁻ᵀ)²` times the parameter-frame one. So a linear family tests `|det J|` and the pairing
+and says **nothing about the direction**: a transposed frame passes the linear test exactly, at
+**2.3e-16**, recorded as a control that cannot fail rather than left as an assumption.
+
+**The check that does reach the direction**, on an annulus `r ∈ [0.4,1.3]` where `J` varies:
+`metric_operator` against the `O(N_q²)` double sum of the bracket's own definition, with the
+physical gradient `∂ₓ = cos θ ∂_r − (sin θ/r) ∂_θ` written out by hand from the polar chart
+rather than read off `PulledBack`. 32 basis functions, 288 quadrature nodes: agreement to
+**9.4e-15**. The two controls are `O(1)` different operators against the same reference —
+frame dropped **7.71e-01**, frame transposed **6.45e-01** — with the mobility composed with
+the map in the frameless control so that the kernel weights are identical and the frame is the
+only difference.
+
+**On the `PolarSplineSpace` itself**, over the whole unit disk and through the pole, the same
+hand-written reference gives **6.4e-15** at 35 basis functions and 288 quadrature nodes, against
+**6.93e-01** with the frame dropped. That is a separate statement and not a repetition of the
+annulus: the polar index set is not a product, the pairing is a sparse Cholesky rather than a
+Kronecker mass, and the three pole functions reach around the entire angular axis. Symmetry,
+semi-definiteness and the degeneracy hold there too, the last at **2.6e-16**.
+
+**The unmapped path is unchanged**, which the existing suite guards: an identity-map pullback
+reproduces the plain bracket to **7.6e-15**, and the mapped pairing it builds equals the
+space's own mass matrix to **1.0e-17**.
+
+**The routes agree on a mapped domain**: `metric_apply` against `metric_matrix * c` to
+**5.1e-16**, `metric_directional` against the contracted `metric_derivative` tensor to
+**7.9e-16**, and the analytic state derivative against a central difference of the assembled
+bracket to **2.9e-09**.
+
+New tests in `test/collisionbrackets_tests.jl` cover the annulus reference with both controls,
+and an identity pullback reproducing the unmapped bracket; new tests in `test/pullback_tests.jl`
+verify the frame is `J⁻ᵀ` and the volume element is `|det J|`. `scripts/verify_frame_covariance.jl`
+is new and registered in `scripts/run_all.jl` with an index row in `docs/src/scripts.md`. Script
+counts move from twenty-six to twenty-seven, file counts from thirty-four to thirty-five.
+
+**Construction cost.** `PulledBack` factorises each node's Jacobian once and reuses it for both
+solves — the metric's `J⁻¹𝔸J⁻ᵀ` and the frame `J⁻ᵀ` — where each solve previously factorised
+afresh. Two factorisations per node rather than three: at 20 000 quadrature nodes, in fresh
+processes at `--check-bounds=auto`, allocations fall from **34 131 968** to **30 291 968** bytes
+and the best of twenty constructions from **30.55 ms** to **27.93 ms**, which is one 2×2 `lu`
+per node. The frame this produces agrees with a per-solve refactorisation to at most **2 ulp**,
+measured across the annulus, the disk through the pole and `r → 0`, because `lu(J)` and `lu(Jᵀ)`
+pivot differently. The polar residuals above sit at that level and move with it; no other figure
+in this entry does.
+
+`metric_derivative` and `metric_directional` build the state's cross factors once and carry them
+across the loop over the `N` basis directions, instead of rebuilding an operand that does not
+depend on the direction.
+
+`degeneracy_residual`'s `CollisionBracket` method is documented rather than commented, so the
+manual records which `𝕄` it pairs against. The `⊥` convention names the three sites that form
+it. The constructor's docstring states that `density` and a `PulledBack` are exclusive, and that
+`CollisionBracket(space, Λ, pb; density = ρ)` is a `MethodError` rather than a silent choice
+between two measures.
+
 ### Added — `PulledBack`, mapped domain pullback onto the parameter space
 
 `PulledBack(space, F, DF; density, tensor)` carries a physical domain's measure and metric onto
