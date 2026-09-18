@@ -1,7 +1,7 @@
 using PoissonBrackets
 using LinearAlgebra
 using Random
-using SimpleSplines: UniformMesh, Dirichlet, Free
+using SimpleSplines: UniformMesh, Dirichlet, Free, Periodic, (..)
 using Test
 
 # `Q_2` from its definition, `|z|² I - z ⊗ z`. Every brute-force reference below builds the
@@ -380,5 +380,97 @@ end
         # the bracket is two-dimensional by definition: the ⊥ that carries its degeneracy
         # has no meaning on three axes, so there is no method rather than a chosen plane
         @test_throws MethodError CollisionBracket(TensorSplineSpace((4, 4, 4), 2), zeros(64))
+    end
+
+    @testset "$(rpad("on a MAPPED domain the gradients are the physical ones",76))" begin
+        # The annulus: the polar chart with the pole cut out, so a tensor-product space
+        # carries it and the physical gradient has a closed form to check against.
+        R₀, R₁ = 0.4, 1.3
+        F(x) = (x[1] * cos(x[2]), x[1] * sin(x[2]))
+        DF(x) = [cos(x[2]) -x[1]*sin(x[2]); sin(x[2]) x[1]*cos(x[2])]
+        s = TensorSplineSpace((UniformMesh(4, R₀ .. R₁), UniformMesh(8, 0 .. 2π)), 2,
+            (Dirichlet(), Periodic()))
+        pb = PulledBack(s, F, DF)
+        N = nbasis(s)
+        φ̂, û = randn(N), randn(N)
+        mob(x, u) = 0.7 + 0.3 * x[1]^2
+
+        b = CollisionBracket(s, φ̂, pb; mobility = mob, mobility_derivative = 0)
+
+        # The O(N_q²) double sum of the definition, with ∂ₓ = cos θ ∂_r − (sin θ/r) ∂_θ and
+        # ∂_y = sin θ ∂_r + (cos θ/r) ∂_θ written out here rather than taken from `PulledBack`.
+        x̂ = quadrature_nodes(s)
+        w = quadrature_weights(s)
+        θ = [pt[2] for pt in x̂]
+        r = [pt[1] for pt in x̂]
+        P̂ = (Matrix(basis_values(s, (1, 0))), Matrix(basis_values(s, (0, 1))))
+        Px = P̂[1] .* cos.(θ)' .- P̂[2] .* (sin.(θ) ./ r)'
+        Py = P̂[1] .* sin.(θ)' .+ P̂[2] .* (cos.(θ) ./ r)'
+        c = [w[q] * r[q] * mob(F(x̂[q]), 0.0) for q in eachindex(w)]
+        gφ = (Px' * φ̂, Py' * φ̂)
+
+        Aref = zeros(N, N)
+        for q in eachindex(w), q′ in eachindex(w)
+
+            z = (gφ[1][q] - gφ[1][q′], gφ[2][q] - gφ[2][q′])
+            v = (-z[2]) .* (Px[:, q] .- Px[:, q′]) .+ z[1] .* (Py[:, q] .- Py[:, q′])
+            Aref .+= (0.5 * c[q] * c[q′]) .* (v * v')
+        end
+
+        A = metric_operator(b, û)
+        @test maximum(abs, A .- Aref) / maximum(abs, Aref) < 1e-10
+
+        # CONTROL: the frame dropped and nothing else. The mobility is composed with the map
+        # so that the kernel weights are identical and the frame is the only difference.
+        bf = CollisionBracket(s, φ̂; density = measure(pb),
+            mobility = (p, u) -> mob(F(p), u), mobility_derivative = 0)
+        @test maximum(abs, metric_operator(bf, û) .- Aref) / maximum(abs, Aref) > 0.1
+
+        # CONTROL: the frame transposed. `|det J|` is untouched by a transpose, so the
+        # measure, the pairing and every area agree and only the direction is wrong.
+        pbᵀ = PulledBack(s, F, x -> Matrix(DF(x)'))
+        @test measure(pbᵀ) ≈ measure(pb)
+        bᵀ = CollisionBracket(s, φ̂, pbᵀ; mobility = mob, mobility_derivative = 0)
+        @test maximum(abs, metric_operator(bᵀ, û) .- Aref) / maximum(abs, Aref) > 0.1
+
+        # Neither control is visible to the structural checks: they are algebraic properties
+        # of Q₂ and say nothing about which gradient was handed in.
+        for bad in (b, bf, bᵀ)
+            @test issymmetric(bad, û)
+            @test ispositive_semidefinite(bad, û)
+            @test degeneracy_residual(bad, û) < 1e-11
+        end
+
+        # A mobility is a function of the physical point once a pullback is supplied.
+        bx = CollisionBracket(s, φ̂, pb; mobility = (x, u) -> x[1], mobility_derivative = 0)
+        @test PoissonBrackets._collision_state(bx, û).M ≈ [x[1] for x in nodes(pb)]
+    end
+
+    @testset "$(rpad("an IDENTITY pullback reproduces the unmapped bracket",76))" begin
+        s = TensorSplineSpace((UniformMesh(4, 1.0 .. 2.0), UniformMesh(4, 0.0 .. 1.0)), 2,
+            (Dirichlet(), Dirichlet()))
+        N = nbasis(s)
+        ρ(x) = 1 / x[1]
+        pb = PulledBack(s, x -> (x[1], x[2]), _ -> [1.0 0.0; 0.0 1.0]; density = ρ)
+        û = randn(N)
+        Λ = Matrix{Float64}(I, N, N)
+
+        plain = CollisionBracket(s, Λ; density = ρ, mobility = (x, u) -> 1 + u^2,
+            mobility_derivative = (x, u) -> 2u)
+        mapped = CollisionBracket(s, Λ, pb; mobility = (x, u) -> 1 + u^2,
+            mobility_derivative = (x, u) -> 2u)
+
+        G = metric_matrix(plain, û)
+        @test maximum(abs, metric_matrix(mapped, û) .- G) / maximum(abs, G) < 1e-12
+
+        v = randn(N)
+        @test metric_apply(mapped, û, v) ≈ metric_apply(plain, û, v)
+        @test PoissonBrackets.metric_directional(mapped, û, v) ≈
+              PoissonBrackets.metric_directional(plain, û, v)
+
+        # The pairing an identity map builds is the space's own mass matrix.
+        @test Matrix(PoissonBrackets.weighted_matrix(s, volume_element(pb), (0, 0), (
+            0, 0))) ≈
+              Matrix(mass_matrix(s))
     end
 end

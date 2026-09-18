@@ -1,7 +1,61 @@
 
 @doc raw"""
+    MappedFrame(space, pb::PulledBack)
+
+Everything a [`CollisionBracket`](@ref) needs in order to read the **physical** frame of a
+mapped domain, built once from a [`PulledBack`](@ref).
+
+A space's derivative tables are ``\hat\partial_l \Phi_K``, the derivatives in the parameter
+coordinates the basis is written in. The bracket's gradients are physical, and
+``\nabla_x = J^{-T} \hat\nabla``, so on a mapped domain the two are different objects
+wherever ``J`` is not a multiple of a rotation. Four things follow, and this type holds all
+four so that they cannot be applied to three places out of four:
+
+| | what | why it is not the parameter one |
+|:--|:--|:--|
+| `tables` | ``\partial^x_k \Phi_K = \sum_l (J^{-T})_{kl} \hat\partial_l \Phi_K``, node by node | the assembly contracts physical gradients |
+| `frame` | ``J^{-T}`` itself | the perpendicular ``\beta = (\nabla\varphi)^\perp`` is a *direction*, and no reweighting of a parameter table produces it |
+| `mass` | ``\int \Phi_K \Phi_L \, dx``, and its factorisation | the pairing that defines ``\delta F/\delta u`` is against the physical measure, not ``d\hat{x}`` |
+| `nodes` | ``F(\hat{x}_q)`` | a `mobility` is a function of position, and the two sets of points are different ones |
+
+The `mass` is the **plain** physical mass matrix, ``|\det J|`` and not ``\rho|\det J|``, even
+where the bracket integrates against ``d\mu = \rho \, dx``. That is the convention the
+unmapped bracket already has — it sandwiches with the space's own mass matrix, which on an
+unmapped domain *is* the plain physical one — and it is what keeps energy conservation
+structural: ``\mathbb{G} \, \partial H/\partial\hat{u} = 0`` holds exactly when the ``\mathbb{M}``
+of the sandwich is the ``\mathbb{M}`` the caller's ``\partial H/\partial\hat{u}`` carries.
+
+# Why the frame is invisible to every structural check
+
+Symmetry, positive semi-definiteness and the degeneracy ``(F, H) = 0`` are algebraic
+properties of ``Q_2(z) = z^\perp \otimes z^\perp`` and of its annihilation of ``z``. They say
+nothing about which ``z`` was handed in, so they hold in **every** parametrisation and a
+bracket assembled in the wrong frame passes all of them. The check that does discriminate is
+covariance, and the assembled operator against the ``O(N_q^2)`` double sum of the bracket's
+own definition where ``J`` varies. `scripts/verify_frame_covariance.jl` measures both, with
+the frame dropped and the frame transposed as the two controls that must fail.
+"""
+struct MappedFrame{T, PT, MT, FT}
+    frame::Matrix{Vector{T}}
+    tables::NTuple{2, PT}
+    mass::MT
+    factorization::FT
+    nodes::Vector{NTuple{2, T}}
+end
+
+function MappedFrame(s::PlanarSplineSpace{T}, pb::PulledBack{T, 2}) where {T}
+    𝔽 = frame(pb)
+    P̂ = (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
+    P = ntuple(k -> P̂[1] * Diagonal(𝔽[k, 1]) + P̂[2] * Diagonal(𝔽[k, 2]), 2)
+    𝕄 = Symmetric(sparse(weighted_matrix(s, volume_element(pb), (0, 0), (0, 0))))
+    MappedFrame(𝔽, P, 𝕄, cholesky(𝕄), nodes(pb))
+end
+
+@doc raw"""
     CollisionBracket(space, φ̂; mobility = 1, mobility_derivative = nothing, density = 1)
     CollisionBracket(space, Λ; mobility = 1, mobility_derivative = nothing, density = 1)
+    CollisionBracket(space, φ̂, pb::PulledBack; mobility = 1, mobility_derivative = nothing)
+    CollisionBracket(space, Λ, pb::PulledBack; mobility = 1, mobility_derivative = nothing)
 
 The collision-like metric bracket of a two-dimensional field,
 
@@ -75,6 +129,24 @@ never sees the outer point. That is why `density` is an explicit field of this t
 than an assumption — a measure is either admissible or it is not, and the type says which one
 was used.
 
+# On a mapped domain, pass the pullback
+
+``\nabla`` above is the **physical** gradient. A space's derivative tables are the parameter
+ones, and the two coincide only where the domain is the one the basis is written on. Handing
+the [`PulledBack`](@ref) to the constructor is what makes them coincide again: it fixes the
+measure, the frame the gradients and the perpendicular are read in, and the pairing the
+sandwich uses, all from the one map. See [`MappedFrame`](@ref) for what each is and why the
+structural checks cannot tell whether it was supplied.
+
+A `mobility` is then sampled at the **physical** points ``F(\hat{x}_q)`` as well, so it is
+written in the coordinates it belongs to — ``M = Cr^2 + D`` in ``r``, not in the radial
+parameter. Without a pullback it is sampled at the quadrature nodes, which on an unmapped
+domain are the same points.
+
+Supplying `density` separately still works and is right on an unmapped domain, which is every
+§5.4 run and the Grad-Shafranov box. On a mapped one it fixes the measure and leaves the
+frame wrong, and nothing raises.
+
 # The entropy enters only through `M`
 
 ``M`` is fixed by the entropy density through `eq:M-condition`, ``M \, \partial_y^2 s = 1``,
@@ -130,17 +202,31 @@ julia> issymmetric(b, û), degeneracy_residual(b, û) < 1e-12
 ```
 """
 struct CollisionBracket{
-    T, ST <: PlanarSplineSpace{T}, HT <: AbstractVecOrMat{T}, MF, MD} <:
+    T, ST <: PlanarSplineSpace{T}, HT <: AbstractVecOrMat{T}, MF, MD, FT} <:
        MetricBracket{T}
     space::ST
     h::HT
     mobility::MF
     mobility_derivative::MD
     density::Vector{T}
+    frame::FT
 end
 
 function CollisionBracket(s::PlanarSplineSpace{T}, h::AbstractVecOrMat{T};
         mobility = one(T), mobility_derivative = nothing, density = one(T)) where {T}
+    _collision_bracket(s, h, _density_samples(s, density), nothing,
+        mobility, mobility_derivative)
+end
+
+function CollisionBracket(s::PlanarSplineSpace{T}, h::AbstractVecOrMat{T},
+        pb::PulledBack{T, 2};
+        mobility = one(T), mobility_derivative = nothing) where {T}
+    _collision_bracket(s, h, _density_samples(s, measure(pb)), MappedFrame(s, pb),
+        mobility, mobility_derivative)
+end
+
+function _collision_bracket(s::PlanarSplineSpace{T}, h::AbstractVecOrMat{T},
+        ρ::Vector{T}, frame, mobility, mobility_derivative) where {T}
     size(h, 1) == nbasis(s) || throw(DimensionMismatch(
         "the generating field has $(size(h, 1)) rows but the space has $(nbasis(s)) " *
         "basis functions"))
@@ -148,12 +234,54 @@ function CollisionBracket(s::PlanarSplineSpace{T}, h::AbstractVecOrMat{T};
         throw(DimensionMismatch(
             "the generating map is $(size(h)) but the space has $(nbasis(s)) basis functions"))
     M, dM = _mobility_pair(T, mobility, mobility_derivative)
-    ρ = _density_samples(s, density)
-    CollisionBracket{T, typeof(s), typeof(h), typeof(M), typeof(dM)}(s, h, M, dM, ρ)
+    CollisionBracket{T, typeof(s), typeof(h), typeof(M), typeof(dM), typeof(frame)}(
+        s, h, M, dM, ρ, frame)
 end
 
 Base.size(b::CollisionBracket) = (nbasis(b.space), nbasis(b.space))
 space(b::CollisionBracket) = b.space
+
+# The four places the frame enters. Without a `MappedFrame` each falls back to the space's own
+# answer, which on an unmapped domain is the physical one — which is why every §5.4 run and the
+# Grad-Shafranov box are right without a pullback.
+_tables(b::CollisionBracket) = _tables(b.space, b.frame)
+function _tables(s::PlanarSplineSpace, ::Nothing)
+    (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
+end
+_tables(::PlanarSplineSpace, f::MappedFrame) = f.tables
+
+_factorization(b::CollisionBracket) = _factorization(b.space, b.frame)
+_factorization(s::PlanarSplineSpace, ::Nothing) = mass_factorization(s)
+_factorization(::PlanarSplineSpace, f::MappedFrame) = f.factorization
+
+_pairing(b::CollisionBracket, v::AbstractVector) = _pairing(b.space, b.frame, v)
+_pairing(s::PlanarSplineSpace, ::Nothing, v::AbstractVector) = _mass_apply(s, v)
+_pairing(::PlanarSplineSpace, f::MappedFrame, v::AbstractVector) = f.mass * v
+
+_sample_points(b::CollisionBracket) = _sample_points(b.space, b.frame)
+_sample_points(s::PlanarSplineSpace, ::Nothing) = quadrature_nodes(s)
+_sample_points(::PlanarSplineSpace, f::MappedFrame) = f.nodes
+
+# ∫ ∂ˣ_k Φ_K 𝔸_kl ∂ˣ_l Φ_L = ∫ ∂̂_i Φ_K [J⁻¹ 𝔸 J⁻ᵀ]_ij ∂̂_j Φ_L, so a physical tensor
+# coefficient is conjugated into the parameter frame and the space's own assembly is then
+# exactly the right one. Cheaper than carrying the physical tables into `tensor_weighted_matrix`,
+# and it is the same congruence `PulledBack`'s own metric is.
+_conjugate(::Nothing, 𝔸) = 𝔸
+
+function _conjugate(f::MappedFrame, 𝔸::Matrix{Vector{T}}) where {T}
+    𝔽 = f.frame
+    C = [zeros(T, length(𝔸[1, 1])) for _ in 1:2, _ in 1:2]
+    for j in 1:2, i in 1:2, l in 1:2, k in 1:2
+        C[i, j] .+= 𝔽[k, i] .* 𝔸[k, l] .* 𝔽[l, j]
+    end
+    return C
+end
+
+# ∇_x of a field, from whichever tables the bracket reads.
+function _gradient(b::CollisionBracket, v̂::AbstractVector)
+    P = _tables(b)
+    ntuple(k -> P[k]' * v̂, 2)
+end
 
 # A number stands for the constant function of that value, which is the whole of §5.4's
 # `M = 1` and of `∂M/∂u = 0` wherever `M` depends on `x` alone, as it does in §5.5.
@@ -197,18 +325,23 @@ scalar moments ``m_0``, ``q_1`` and ``\Sigma``.
 The ``\perp`` is fixed here and nowhere else: ``\beta = (-\partial_2 \phi, \partial_1 \phi)``.
 It is what carries the degeneracy, and dropping it leaves a bracket that is still symmetric
 and still positive semi-definite — see [`degeneracy_residual`](@ref).
+
+The derivatives are the **physical** ones, ``\nabla_x = J^{-T}\hat\nabla``, wherever the
+bracket was given a [`MappedFrame`](@ref). Perping does not commute with a general linear
+change of coordinates, so on a mapped domain the parameter perpendicular is a different
+direction and not merely a rescaled one.
 """
 function _collision_state(b::CollisionBracket{T}, û::AbstractVector) where {T}
     s = b.space
-    x = quadrature_nodes(s)
+    x = _sample_points(b)
     u = field(s, û, (0, 0))
     M = T[b.mobility(x[r], u[r]) for r in eachindex(u)]
     Mu = T[b.mobility_derivative(x[r], u[r]) for r in eachindex(u)]
     μ = quadrature_weights(s) .* b.density
     c = M .* μ
 
-    φ̂ = _generator(b, û)
-    β = (-field(s, φ̂, (0, 1)), field(s, φ̂, (1, 0)))
+    ∇φ = _gradient(b, _generator(b, û))
+    β = (-∇φ[2], ∇φ[1])
 
     m₀ = sum(c)
     β̄ = ntuple(k -> dot(c, β[k]) / m₀, 2)
@@ -272,7 +405,7 @@ function _kernel_moments_derivative(c, γ, δc, δγ)
 end
 
 @doc raw"""
-    _cross_factors(space, c, γ)
+    _cross_factors(tables, c, γ)
 
 The eight ``N``-vectors through which the **nonlocal** half of the operator factorises,
 
@@ -290,9 +423,11 @@ enough for the *pointwise* coefficients ``\mathbb{D}_s`` and ``\mathbb{F}_s``, w
 cross term ``\int \! \int \kappa \, \nabla \Phi_K(x)^T Q_2 \nabla \Phi_L(x') `` needs one
 ``N``-vector per separable factor instead. There are nine such factors and eight
 accumulators — rank at most nine, independent of the mesh.
+
+`tables` are the derivative tables to accumulate against: the physical ones on a mapped
+domain, the space's own otherwise.
 """
-function _cross_factors(s::PlanarSplineSpace, c::AbstractVector, γ)
-    P = (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
+function _cross_factors(P, c::AbstractVector, γ)
     S = ntuple(j -> P[j] * c, 2)
     𝕋 = [P[i] * (c .* γ[j]) for i in 1:2, j in 1:2]
     R = ntuple(j -> sum(P[i] * (c .* γ[i] .* γ[j]) for i in 1:2), 2)
@@ -335,8 +470,9 @@ function _collision_operator(b::CollisionBracket{T}, st) where {T}
 
         coefficient[k, l] = ϱ .* 𝔻[k, l]
     end
-    f = _cross_factors(s, st.c, st.γ)
-    Matrix(tensor_weighted_matrix(s, coefficient)) .- _cross_operator(f, f)
+    f = _cross_factors(_tables(b), st.c, st.γ)
+    Matrix(tensor_weighted_matrix(s, _conjugate(b.frame, coefficient))) .-
+    _cross_operator(f, f)
 end
 
 function _collision_operator_derivative(b::CollisionBracket{T}, st, δγ, δc, δM) where {T}
@@ -350,14 +486,14 @@ function _collision_operator_derivative(b::CollisionBracket{T}, st, δγ, δc, �
 
         coefficient[k, l] = δϱ .* 𝔻[k, l] .+ ϱ .* δ𝔻[k, l]
     end
-    f = _cross_factors(s, st.c, st.γ)
-    δf = _cross_factors_derivative(s, st.c, st.γ, δc, δγ)
-    Matrix(tensor_weighted_matrix(s, coefficient)) .- _cross_operator(δf, f) .-
-    _cross_operator(f, δf)
+    P = _tables(b)
+    f = _cross_factors(P, st.c, st.γ)
+    δf = _cross_factors_derivative(P, st.c, st.γ, δc, δγ)
+    Matrix(tensor_weighted_matrix(s, _conjugate(b.frame, coefficient))) .-
+    _cross_operator(δf, f) .- _cross_operator(f, δf)
 end
 
-function _cross_factors_derivative(s::PlanarSplineSpace, c, γ, δc, δγ)
-    P = (basis_values(s, (1, 0)), basis_values(s, (0, 1)))
+function _cross_factors_derivative(P, c, γ, δc, δγ)
     S = ntuple(j -> P[j] * δc, 2)
     𝕋 = [P[i] * (δc .* γ[j] .+ c .* δγ[j]) for i in 1:2, j in 1:2]
     R = ntuple(
@@ -367,7 +503,14 @@ function _cross_factors_derivative(s::PlanarSplineSpace, c, γ, δc, δγ)
 end
 
 function metric_matrix(b::CollisionBracket, û::AbstractVector)
-    _mass_sandwich(b.space, metric_operator(b, û))
+    _mass_sandwich(_factorization(b), metric_operator(b, û))
+end
+
+# The pairing that defines δF/δu is the mapped one wherever the bracket has a frame, so the
+# generator this is checked against has to be paired the same way. Getting the two out of step
+# is not a small error: the degeneracy is exact or it is nothing.
+function degeneracy_residual(b::CollisionBracket, û::AbstractVector)
+    degeneracy_residual(b, û, _pairing(b, _generator(b, û)))
 end
 
 @doc raw"""
@@ -409,13 +552,14 @@ rather than the ``\mathbb{R}, \mathbb{S}, \mathbb{T}`` factorisation of
 not a tautology.
 """
 function metric_apply(b::CollisionBracket{T}, û::AbstractVector, c::AbstractVector) where {T}
-    s = b.space
     st = _collision_state(b, û)
     𝔻 = _diffusion_tensor(st)
     γ = st.γ
 
-    v̂ = mass_factorization(s) \ Vector(c)
-    w = ntuple(k -> st.M .* field(s, v̂, _unit_index(2, k)), 2)   # w = M ∇v_h
+    F = _factorization(b)
+    v̂ = F \ Vector(c)
+    ∇v = _gradient(b, v̂)
+    w = ntuple(k -> st.M .* ∇v[k], 2)                            # w = M ∇v_h
     vw = ntuple(k -> st.μ .* w[k], 2)                            # w dμ at the nodes
 
     n₀ = ntuple(k -> sum(vw[k]), 2)
@@ -428,9 +572,10 @@ function metric_apply(b::CollisionBracket{T}, û::AbstractVector, c::AbstractVec
     𝔽 = ntuple(
         k -> @.(γ[k] * δn - γ[k] * trB - (B̃[k, 1] * γ[1] + B̃[k, 2] * γ[2]) + T̃[k]), 2)
 
-    Av = sum(basis_values(s, _unit_index(2, k)) *
-             (st.μ .* (𝔻[k, 1] .* w[1] .+ 𝔻[k, 2] .* w[2] .- st.M .* 𝔽[k])) for k in 1:2)
-    mass_factorization(s) \ Av
+    P = _tables(b)
+    Av = sum(P[k] * (st.μ .* (𝔻[k, 1] .* w[1] .+ 𝔻[k, 2] .* w[2] .- st.M .* 𝔽[k]))
+    for k in 1:2)
+    F \ Av
 end
 
 @doc raw"""
@@ -457,17 +602,18 @@ function metric_derivative(b::CollisionBracket{T}, û::AbstractVector) where {T}
     (b.h isa AbstractVector && all(iszero, st.Mu)) && return dG
 
     Φ = basis_values(s, (0, 0))
+    F = _factorization(b)
     zero_samples = zeros(T, length(st.μ))
     for m in 1:N
         δM = st.Mu .* Vector(Φ[m, :])
         δc = st.μ .* δM
         δγ = if b.h isa AbstractMatrix
-            δφ̂ = Vector(b.h[:, m])
-            (-field(s, δφ̂, (0, 1)), field(s, δφ̂, (1, 0)))
+            δ∇φ = _gradient(b, Vector(b.h[:, m]))
+            (-δ∇φ[2], δ∇φ[1])
         else
             (zero_samples, zero_samples)
         end
-        dG[m, :, :] = _mass_sandwich(s, _collision_operator_derivative(b, st, δγ, δc, δM))
+        dG[m, :, :] = _mass_sandwich(F, _collision_operator_derivative(b, st, δγ, δc, δM))
     end
     return dG
 end
@@ -500,7 +646,7 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
     D = zeros(T, N, N)
     (b.h isa AbstractVector && all(iszero, st.Mu)) && return D
 
-    F = mass_factorization(s)
+    F = _factorization(b)
     w = F \ Vector(v)
     Φ = basis_values(s, (0, 0))
     zero_samples = zeros(T, length(st.μ))
@@ -508,8 +654,8 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
         δM = st.Mu .* Vector(Φ[m, :])
         δc = st.μ .* δM
         δγ = if b.h isa AbstractMatrix
-            δφ̂ = Vector(b.h[:, m])
-            (-field(s, δφ̂, (0, 1)), field(s, δφ̂, (1, 0)))
+            δ∇φ = _gradient(b, Vector(b.h[:, m]))
+            (-δ∇φ[2], δ∇φ[1])
         else
             (zero_samples, zero_samples)
         end
