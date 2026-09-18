@@ -93,16 +93,22 @@ struct PulledBack{T, D}
             v[q] = detJ
             m[q] = ρ[q] * detJ
 
+            # one factorisation of J serves both solves against it below; only the right
+            # division by J' still factors on its own, so a node pays two rather than three.
+            # The frame is therefore read off J's factorisation and no longer off J''s, and
+            # the two pivot differently: it agrees to at most 2 ulp rather than bit for bit.
+            Jf = lu(J)
+
             # m J⁻¹ A J⁻ᵀ, formed as a solve rather than an explicit inverse: at D = 2 or 3
             # the difference is not the arithmetic but that `\` is the one spelling which
             # says what is meant and cannot be transposed by accident.
             A = tensor === nothing ? A₀ : Matrix{T}(tensor(x[q]))
-            G = m[q] * (J \ A) / J'
+            G = m[q] * (Jf \ A) / J'
 
             # J⁻ᵀ itself, which a caller that differentiates rather than integrates needs:
             # the metric above has the measure and the coefficient folded in and cannot be
             # taken apart again.
-            invJᵀ = J' \ A₀
+            invJᵀ = transpose(Jf \ A₀)
 
             for k in 1:D, l in 1:D
 

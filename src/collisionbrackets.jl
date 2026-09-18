@@ -147,6 +147,10 @@ Supplying `density` separately still works and is right on an unmapped domain, w
 §5.4 run and the Grad-Shafranov box. On a mapped one it fixes the measure and leaves the
 frame wrong, and nothing raises.
 
+The two forms are exclusive. A [`PulledBack`](@ref) carries its own measure
+``\rho \, |\det J|``, so no method takes both, and `CollisionBracket(space, Λ, pb; density = ρ)`
+is a `MethodError` rather than a silent choice between the two measures.
+
 # The entropy enters only through `M`
 
 ``M`` is fixed by the entropy density through `eq:M-condition`, ``M \, \partial_y^2 s = 1``,
@@ -322,9 +326,11 @@ mobility `M` and its derivative `Mu`, the measure weights ``\mu = \rho \, w``, t
 weights ``c = M \mu``, the recentred ``\gamma = (\nabla \phi)^\perp - \bar\beta``, and the six
 scalar moments ``m_0``, ``q_1`` and ``\Sigma``.
 
-The ``\perp`` is fixed here and nowhere else: ``\beta = (-\partial_2 \phi, \partial_1 \phi)``.
-It is what carries the degeneracy, and dropping it leaves a bracket that is still symmetric
-and still positive semi-definite — see [`degeneracy_residual`](@ref).
+The ``\perp`` convention is ``\beta = (-\partial_2 \phi, \partial_1 \phi)``. It is fixed here
+for the state, and the same two lines carry the perturbation ``\delta\beta`` in
+[`metric_derivative`](@ref) and in [`metric_directional`](@ref); the three are one convention
+and move together. It is what carries the degeneracy, and dropping it leaves a bracket that is
+still symmetric and still positive semi-definite — see [`degeneracy_residual`](@ref).
 
 The derivatives are the **physical** ones, ``\nabla_x = J^{-T}\hat\nabla``, wherever the
 bracket was given a [`MappedFrame`](@ref). Perping does not commute with a general linear
@@ -475,7 +481,9 @@ function _collision_operator(b::CollisionBracket{T}, st) where {T}
     _cross_operator(f, f)
 end
 
-function _collision_operator_derivative(b::CollisionBracket{T}, st, δγ, δc, δM) where {T}
+# `f` is the state's own cross factors. They depend on the state and not on the perturbation,
+# so both callers build them once and pass them across their loop over the N directions.
+function _collision_operator_derivative(b::CollisionBracket{T}, st, f, δγ, δc, δM) where {T}
     s = b.space
     𝔻 = _diffusion_tensor(st)
     δ𝔻 = _diffusion_tensor_derivative(st, δγ, δc)
@@ -486,9 +494,7 @@ function _collision_operator_derivative(b::CollisionBracket{T}, st, δγ, δc, �
 
         coefficient[k, l] = δϱ .* 𝔻[k, l] .+ ϱ .* δ𝔻[k, l]
     end
-    P = _tables(b)
-    f = _cross_factors(P, st.c, st.γ)
-    δf = _cross_factors_derivative(P, st.c, st.γ, δc, δγ)
+    δf = _cross_factors_derivative(_tables(b), st.c, st.γ, δc, δγ)
     Matrix(tensor_weighted_matrix(s, _conjugate(b.frame, coefficient))) .-
     _cross_operator(δf, f) .- _cross_operator(f, δf)
 end
@@ -506,9 +512,19 @@ function metric_matrix(b::CollisionBracket, û::AbstractVector)
     _mass_sandwich(_factorization(b), metric_operator(b, û))
 end
 
-# The pairing that defines δF/δu is the mapped one wherever the bracket has a frame, so the
-# generator this is checked against has to be paired the same way. Getting the two out of step
-# is not a small error: the degeneracy is exact or it is nothing.
+@doc raw"""
+    degeneracy_residual(b::CollisionBracket, û)
+
+The two-argument [`degeneracy_residual`](@ref), with the gradient
+``\partial H / \partial \hat{u}`` supplied in the pairing this bracket actually uses.
+
+The pairing that defines ``\delta F / \delta u`` is the mapped one wherever the bracket was
+given a [`MappedFrame`](@ref), so the generator checked against has to be paired the same way
+— ``\mathbb{M}`` here is the plain physical mass matrix and not the space's parameter-measure
+one. Getting the two out of step is not a small error: the degeneracy is exact or it is
+nothing. Without a frame this is the space's own ``\mathbb{M}``, which is the generic method's
+answer.
+"""
 function degeneracy_residual(b::CollisionBracket, û::AbstractVector)
     degeneracy_residual(b, û, _pairing(b, _generator(b, û)))
 end
@@ -603,6 +619,7 @@ function metric_derivative(b::CollisionBracket{T}, û::AbstractVector) where {T}
 
     Φ = basis_values(s, (0, 0))
     F = _factorization(b)
+    f = _cross_factors(_tables(b), st.c, st.γ)
     zero_samples = zeros(T, length(st.μ))
     for m in 1:N
         δM = st.Mu .* Vector(Φ[m, :])
@@ -613,7 +630,8 @@ function metric_derivative(b::CollisionBracket{T}, û::AbstractVector) where {T}
         else
             (zero_samples, zero_samples)
         end
-        dG[m, :, :] = _mass_sandwich(F, _collision_operator_derivative(b, st, δγ, δc, δM))
+        dG[m, :, :] = _mass_sandwich(
+            F, _collision_operator_derivative(b, st, f, δγ, δc, δM))
     end
     return dG
 end
@@ -649,6 +667,7 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
     F = _factorization(b)
     w = F \ Vector(v)
     Φ = basis_values(s, (0, 0))
+    f = _cross_factors(_tables(b), st.c, st.γ)
     zero_samples = zeros(T, length(st.μ))
     for m in 1:N
         δM = st.Mu .* Vector(Φ[m, :])
@@ -659,7 +678,7 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
         else
             (zero_samples, zero_samples)
         end
-        D[:, m] = F \ (_collision_operator_derivative(b, st, δγ, δc, δM) * w)
+        D[:, m] = F \ (_collision_operator_derivative(b, st, f, δγ, δc, δM) * w)
     end
     return D
 end

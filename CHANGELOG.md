@@ -78,11 +78,11 @@ the map in the frameless control so that the kernel weights are identical and th
 only difference.
 
 **On the `PolarSplineSpace` itself**, over the whole unit disk and through the pole, the same
-hand-written reference gives **6.1e-15** at 35 basis functions and 288 quadrature nodes, against
+hand-written reference gives **6.4e-15** at 35 basis functions and 288 quadrature nodes, against
 **6.93e-01** with the frame dropped. That is a separate statement and not a repetition of the
 annulus: the polar index set is not a product, the pairing is a sparse Cholesky rather than a
 Kronecker mass, and the three pole functions reach around the entire angular axis. Symmetry,
-semi-definiteness and the degeneracy hold there too, the last at **3.1e-16**.
+semi-definiteness and the degeneracy hold there too, the last at **2.6e-16**.
 
 **The unmapped path is unchanged**, which the existing suite guards: an identity-map pullback
 reproduces the plain bracket to **7.6e-15**, and the mapped pairing it builds equals the
@@ -98,6 +98,26 @@ and an identity pullback reproducing the unmapped bracket; new tests in `test/pu
 verify the frame is `J⁻ᵀ` and the volume element is `|det J|`. `scripts/verify_frame_covariance.jl`
 is new and registered in `scripts/run_all.jl` with an index row in `docs/src/scripts.md`. Script
 counts move from twenty-six to twenty-seven, file counts from thirty-four to thirty-five.
+
+**Construction cost.** `PulledBack` factorises each node's Jacobian once and reuses it for both
+solves — the metric's `J⁻¹𝔸J⁻ᵀ` and the frame `J⁻ᵀ` — where each solve previously factorised
+afresh. Two factorisations per node rather than three: at 20 000 quadrature nodes, in fresh
+processes at `--check-bounds=auto`, allocations fall from **34 131 968** to **30 291 968** bytes
+and the best of twenty constructions from **30.55 ms** to **27.93 ms**, which is one 2×2 `lu`
+per node. The frame this produces agrees with a per-solve refactorisation to at most **2 ulp**,
+measured across the annulus, the disk through the pole and `r → 0`, because `lu(J)` and `lu(Jᵀ)`
+pivot differently. The polar residuals above sit at that level and move with it; no other figure
+in this entry does.
+
+`metric_derivative` and `metric_directional` build the state's cross factors once and carry them
+across the loop over the `N` basis directions, instead of rebuilding an operand that does not
+depend on the direction.
+
+`degeneracy_residual`'s `CollisionBracket` method is documented rather than commented, so the
+manual records which `𝕄` it pairs against. The `⊥` convention names the three sites that form
+it. The constructor's docstring states that `density` and a `PulledBack` are exclusive, and that
+`CollisionBracket(space, Λ, pb; density = ρ)` is a `MethodError` rather than a silent choice
+between two measures.
 
 ### Added — `PulledBack`, mapped domain pullback onto the parameter space
 
