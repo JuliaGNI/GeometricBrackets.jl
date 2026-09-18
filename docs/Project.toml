@@ -6,17 +6,6 @@ PoissonBrackets = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
 SimpleSolvers = "36b790f5-6434-4fbe-b711-1f64a1e2f6a2"
 SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 
-# SimpleSplines is not registered in General, so it needs an explicit source. `[sources]` is
-# a Julia 1.11 feature: on 1.10 the whole block is ignored, so both entries below vanish and
-# resolution fails with "expected package PoissonBrackets to be registered" — this
-# environment's own path source is the one Pkg names first, not SimpleSplines. The
-# SimpleSplines source goes once it is *registered* — a `version` bump on `main`, 0.1.0
-# included, is not that. `PoissonBrackets = {path = ".."}` stays either way.
-#
-# `rev` names a branch, so a `Manifest.toml` pins whatever `main` was when it last resolved
-# and never rechecks, leaving environments instantiated at different times on different
-# commits. Refresh a stale one with `Pkg.update("SimpleSplines")`; `Pkg.resolve()` treats the
-# pin as fixed and reports "Unsatisfiable requirements" against the package's `[compat]`.
 [sources]
 PoissonBrackets = {path = ".."}
 SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
