@@ -10,6 +10,149 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Added — `PulledBack`, mapped domain pullback onto the parameter space
+
+`PulledBack(space, F, DF; density, tensor)` carries a physical domain's measure and metric onto
+the parameter domain a `DiscreteSpace` is built on, evaluated once at the quadrature nodes. New
+exports: `PulledBack`, `measure`, `metric`, `jacobian_residual`.
+
+**The mathematics.** A map `F` with Jacobian `J` sends an integral against `dμ = ρ(x) dx` to
+one against `m = ρ(F)|det J|`, and a Dirichlet form against a physical coefficient `A` to one
+against `𝔻 = m J⁻¹ A J⁻ᵀ`, because `∇_x = J⁻ᵀ ∇̂`:
+
+    ∫_Ω f dμ                     =  ∫ (f∘F) m dx̂
+    ∫_Ω (∇_x u)ᵀ A (∇_x v) dμ    =  ∫ (∇̂u)ᵀ 𝔻 (∇̂v) dx̂
+
+The Jacobian `DF` is a required argument and is never differenced. `jacobian_residual(F, DF, x̂)` checks a supplied Jacobian against a central
+difference of `F` — a test, not a fallback.
+
+**Why one object rather than three call sites.** `measure(pb)` is the vector to hand a
+`CollisionBracket` as its `density`; `metric(pb)` is the D×D matrix of per-node vectors that
+`tensor_weighted_matrix` takes; `nodes(pb)` are the physical coordinates `F(x̂_q)`, where a
+physical coefficient — a Grad-Shafranov mobility `M = Cr² + D` — must be sampled, not at the
+parameter nodes. A mapped assembly needs the same weight in the bracket's measure, in the
+weighted stiffness coefficient, and in any diagnostic that integrates over the domain. Supplying
+it separately to each is how a factor lands in two of them and not the third, which is a wrong
+answer rather than a failed assertion.
+
+**Invariance.** `𝔻` inherits symmetry and positive semi-definiteness from the physical
+coefficient `A`, because `J⁻¹AJ⁻ᵀ` is a congruence and `m ≥ 0`. So a metric bracket that goes
+indefinite on a mapped domain has a coefficient problem, not a geometry problem.
+
+**Measurements on an annulus**, all reproducible by `scripts/verify_pullback.jl`, on the polar
+map `F(r,θ) = (r cos θ, r sin θ)` with `r ∈ [0.4, 1.3]`, cubic, 24×48 cells, where every
+quantity has a closed form:
+
+- Supplied Jacobian against a central difference: **2.5e-10**.
+- Measure: `|det J| = r` pointwise to **4.4e-16**, and `∫ 1 dμ = 4.806636759992` against the
+  exact `π(R₁²−R₀²)` at relative **0.0**.
+- Metric: `𝔻 = diag(r, 1/r)` — the polar Laplacian's weak form — to **6.7e-16, 8.9e-16**, with
+  off-diagonals below **3.9e-16**.
+- Weak Laplacian `∫∇u·∇v dμ = −∫ v Δu dμ` for a `u` vanishing on both circles: relative
+  **3.5e-9**.
+
+**Convergence is nonvacuous.** Under refinement at 12, 24 and 48 radial cells the pullback's
+relative residual is **2.5e-7, 3.5e-9, 5.4e-11**, while the plain parameter-square stiffness
+stays at exactly 6.083e-02 and a version that keeps the measure but drops the metric stays at
+exactly 9.829e-02 at every level — each converging to its own wrong operator. The dropped-metric
+control is the error an area check cannot see, because the area never touches the metric.
+
+**Physical density.** A density given in physical coordinates is composed with the map: `ρ =
+1/|x|`, the Grad-Shafranov weight, pulled back onto the polar chart cancels `|det J| = r`
+exactly and returns measure 1 to **4.4e-16**.
+
+**The non-coordinate Grad-Shafranov disk map**, which has no closed-form metric: supplied
+Jacobian against a central difference **2.9e-9**, and area 114.776878 against the 114.777 that
+`Experiments/MetriplecticRelaxation/src/takeda.jl` obtains from its own P₁ triangulation,
+relative **1.06e-6** — the difference being a deliberate `s = 1e-3` floor, since a
+tensor-product space cannot carry the pole.
+
+**Test coverage.** `test/pullback_tests.jl` is 24 tests. One worth naming: `jacobian_residual`
+catches a **transposed** Jacobian, which leaves the determinant and therefore every area
+untouched. `scripts/verify_pullback.jl` is registered in `scripts/run_all.jl` and indexed in
+`docs/src/scripts.md`.
+
+**Scope.** `PulledBack` needs no polar space and works on **any** `DiscreteSpace`, which is why
+it is verified here on an annulus — the same coordinate map with the pole cut out, where a
+tensor-product space suffices and every quantity has a closed form. The polar space that uses
+it is the next entry.
+
+### Added — `PolarSplineSpace`, a `DiscreteSpace` on a parameter square with a pole
+
+`PolarSplineSpace` wraps SimpleSplines' `PolarSplineBasis`: a two-dimensional space on a
+parameter square whose left radial edge is a **pole**, one point of the physical domain reached
+from every angle, as on a mapped disk. It is `C⁰` and `C¹` there by construction, where a
+tensor-product space is not even `C⁰` — the map collapses the whole circle `s = 0` to a point,
+and nothing constrains a tensor-product basis's `θ`-dependence on it.
+
+Constructed from a `PolarSplineQuadrature`, a `PolarSplineBasis`, a radial and angular basis
+pair, or `PolarSplineSpace((ns, nθ), p)` for a cell count per axis and a degree. New exports:
+`PolarSplineSpace`, and `pole`, `pole_triangle` and `pseudo_cartesian` forwarded from the basis.
+
+**The interface is the same.** Every generic assembly of `spaces.jl` runs on it unchanged,
+because the three things they are written against have the same shapes as on
+`TensorSplineSpace`: `basis_values(s, d)` is a sparse `N × Q` table over the flattened
+quadrature grid, `quadrature_weights(s)` is the matching flat vector, and
+`mass_factorization(s)` answers `\`. It also answers `mixed_matrix`, `weighted_matrix`,
+`derivative_matrix`, `stiffness_matrix`, `tensor_weighted_matrix`, `inverse_mass_matrix`,
+`evaluate` and `field`, with per-axis derivative multi-indices throughout.
+
+**Three things differ**, all consequences of a pole function reaching around the whole angular
+axis. There is no `size(s)` and a coefficient vector is never reshaped, because the index set is
+not a product. `mass_factorization` is a sparse Cholesky rather than a `KroneckerMass`. And
+`inverse_mass_matrix` has no Kronecker shortcut and is a dense `N × N` solve.
+
+**The space integrates against the parameter measure**, exactly as `TensorSplineSpace`
+integrates against `dx`. A mapped domain's measure and metric are the map's and not the space's,
+and come from `PulledBack`. That is what makes the two spaces mean the same thing by the same
+method names.
+
+### Changed — `CollisionBracket` takes any planar spline space
+
+Its type constraint was `TensorSplineSpace{T, 2}`, which is stronger than the code: the bracket
+asks only for `nbasis`, `quadrature_nodes` as a vector of pairs, `quadrature_weights`,
+`basis_values(s, d::NTuple{2,Int})` and `field`. It is now
+`PlanarSplineSpace{T} = Union{TensorSplineSpace{T, 2}, PolarSplineSpace{T}}` — a union rather
+than an abstract type, because the two share no supertype below `DiscreteSpace` and
+`DiscreteSpace` carries no dimension parameter to constrain. A third planar space joins by being
+added to that union and needs no other change.
+
+Nothing changed for an existing caller, and the whole suite passes unchanged.
+
+**Measurements**, reproducible by `scripts/verify_polar_bracket.jl`, 24 checks:
+
+- **The pulled-back Laplacian on the whole unit disk, pole included** — a question no
+  tensor-product space can be asked. `u = 1 − s²` is radial, so it is in the polar space
+  exactly (projection error 5.6e-15), it vanishes on the rim, and `∫|∇u|² dx = 2π` in closed
+  form. Assembled at 32×64 cubic cells the relative error is **3.1e-14**, and the measure alone
+  gives the disk's area `π` to 1e-12. The metric coefficient is `diag(s, 1/s)` and is singular
+  at the pole: that is the true polar Laplacian, integrable because a `C¹` function has
+  `∂_θu = O(s)`, and no quadrature node sits at `s = 0`.
+- **A radial test field cannot detect a dropped angular metric.** With the metric dropped to
+  `|det J|` times the identity, `u = 1 − s²` gives *exactly* the right answer, because
+  `∂_θu = 0` and the `θθ` component never appears. The same control is 20 % wrong on a field
+  with angular structure, which is why it is run on both. The plain parameter-square stiffness,
+  with no pullback at all, is 33 % wrong.
+- **The `CollisionBracket`'s structural properties survive the space change**, against the
+  parameter measure and against `eq:mapping`'s `dμ = dr dz / r` alike: symmetry 3.5e-16,
+  `λmin/λmax` −1.1e-17, degeneracy `(F,H)` 4.0e-17, against a wrong-generator control at 1.13.
+  It is singular and not definite, as it must be.
+- **Two controls that must break it.** A sign-changing mobility — `eq:M-condition` requires
+  `M > 0` and nothing enforces it — drives `λmin/λmax` to −1.0. Replacing `z⊥ ⊗ z⊥` by `z ⊗ z`
+  in an `O(Nq²)` reference keeps symmetry at 6.5e-17 and semidefiniteness at +5.1e-16 and
+  breaks **only** the degeneracy, 1.5e-14 → 4.2e-01. That reference is first checked against
+  the package's own collapsed form, or the control would establish nothing. Note that the
+  control must be fed the *unperped* gradient: given the perped one, `z ⊗ z` reconstructs
+  `z⊥ ⊗ z⊥` and cannot fail.
+- **The recentring regime.** At generating-field spreads of 1e-3, 1e-5 and 1e-7 — a relaxed
+  Grad-Shafranov state — the centred `𝔻_s` stays positive semi-definite, `λmin/λmax` at or
+  above −3.2e-17, with the degeneracy at 3.5e-16.
+
+`test/polarspaces_tests.jl` is 54 tests. `scripts/verify_polar_bracket.jl` is registered in
+`scripts/run_all.jl` and indexed in `docs/src/scripts.md`, whose script counts move from
+twenty-four to twenty-six.
+
+
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn
 
 **Comments only. No dependency, no bound and no resolved version changes.**

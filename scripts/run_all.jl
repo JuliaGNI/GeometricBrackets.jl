@@ -50,7 +50,11 @@ const SCRIPTS = [
     # the metric half: the collision-like bracket's O(N_q) moment collapse, and the flow the
     # metric brackets generate once a Hamiltonian and an entropy are attached to them
     "verify_metric_collapse.jl",
-    "verify_metriplectic_flow.jl"
+    "verify_metriplectic_flow.jl",
+    # the mapped domain: the pullback of a measure and a metric, and the polar space that
+    # carries a bracket across the pole the tensor-product spaces cannot reach
+    "verify_pullback.jl",
+    "verify_polar_bracket.jl"
 ]
 
 const RULE = "="^67
