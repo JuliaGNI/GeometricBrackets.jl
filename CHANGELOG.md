@@ -65,8 +65,9 @@ caller who should be asking SimpleSplines.
 method.base, integ); else; _step!(û, method.base, integ); end`. The implicit branch once
 inlined the Newton solve; when that moved into `_step!(û, ::IntegratorMethod, integ)` the two
 branches became the same call, and dispatch on the base method already separates the explicit
-step from the solver one. The conditional is gone and `isexplicit` keeps its other caller, the
-`Integrator` constructor.
+step from the solver one. The conditional is gone and `isexplicit` keeps both its other
+callers: the `Integrator` constructor, and the `ProjectionMethod` method that forwards to
+`isexplicit(m.base)`.
 
 Two docstrings recorded their own history — "as an earlier version did", "as an earlier version
 of this docstring and of `verify_burgers_discretisation.py` both did". The mechanism each was
@@ -639,8 +640,11 @@ Whether the uncentred `𝔻_s` comes out *indefinite* at a given node is decided
 order, so it is a statement about a distribution and is measured where one can be, in
 `verify_metric_collapse.jl`, which sweeps it over draws. A test that fixes one `ε` and one seed
 asserts a rounding accident: a majority of forty seeded draws lose semi-definiteness under
-`--check-bounds=auto` and **none of them** under `--check-bounds=yes`, which is what
-`Pkg.test()` uses.
+`--check-bounds=auto` and **none of them** under `--check-bounds=yes`. Which of the two a run
+gets is itself version-dependent — up to Julia 1.12 `Pkg.test()` forced `yes`, and from 1.13 it
+runs the tests "with the same `check-bounds` setting as the current Julia session" — so the
+`Julia 1` and `Julia min` jobs of one CI matrix need not agree.
+
 The `q₁` terms are kept even though `q₁` vanishes at the centre: the bracket depends only on
 differences `β(x) − β(x')`, so the origin is free, and it is that freedom which makes
 `metric_derivative` analytic — the centre is frozen while `û` moves and `∂β̄/∂û` never appears.
@@ -692,8 +696,9 @@ by the scale rather than dividing by it: an absolute test would pass everything 
 eigenvalue is below one, and `1e-12 * Diagonal([1, -1])` is the case that catches it. A matrix
 with no positive eigenvalue counts as semi-definite only if it is zero, which the multiplied
 form already gives without a separate guard for `λmax ≤ 0`.
-`degeneracy_residual` is the point. A metric bracket must satisfy `(A, H) = 0` for every `A`, i.e.
-`𝔾 ∂H/∂û = 0`, and it is *that* which makes energy conservation a property of the bracket
+
+`degeneracy_residual` is the point. A metric bracket must satisfy `(A, H) = 0` for every `A`,
+i.e. `𝔾 ∂H/∂û = 0`, and it is *that* which makes energy conservation a property of the bracket
 rather than of the quadrature or the mesh. Whether a *one-step method* holds `H` exactly is a
 separate question about the method: the midpoint rule does, because for a quadratic `H` the
 identity `H(y) − H(x) = ∇H(ū)·(y − x)` is exact and the converged increment lies in the range
@@ -741,9 +746,9 @@ is rebuilt from the Kronecker factors on every call on a `TensorSplineSpace`, so
 it would make the cost depend on the mesh after all. What `metric_apply` allocates on a
 `TensorSplineSpace` is the vectors it returns and not a mass matrix per call: it grows linearly
 in `N` — roughly 2.1 kB at `N = 25`, 4.0 kB at `N = 64` and 7.8 kB at `N = 144` for a
-`ProjectorBracket` on the periodic torus under Julia 1.13 — where the matrix would have grown
-as `N²`. The docstring's claim that the cost is independent of the mesh is true in fact and not
-only in algebra.
+`ProjectorBracket` built from a **prescribed** generating field on the periodic torus, under
+Julia 1.13 — where the matrix would have grown as `N²`. The docstring's claim that the cost is
+independent of the mesh is true in fact and not only in algebra.
 
 Measured, in `test/metricbrackets_tests.jl`, at `6 × 6` cubic cells on the torus (`N = 36`) and
 `16` cubic cells on the line (`N = 16`):
