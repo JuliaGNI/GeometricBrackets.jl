@@ -106,7 +106,7 @@ end
         @test project(s, field(s, v̂)) ≈ v̂
         # and the in-place form agrees with the out-of-place one
         w = similar(v̂)
-        PoissonBrackets.project!(w, s, field(s, v̂))
+        project!(w, s, field(s, v̂))
         @test w ≈ v̂
     end
 

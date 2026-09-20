@@ -404,7 +404,7 @@ let
     record("the moment route and the assembly agree", rapply < 1e-10)
 
     v = randn(N)
-    D = PoissonBrackets.metric_directional(b, P.û, v)
+    D = metric_directional(b, P.û, v)
     dG = metric_derivative(b, P.û)
     rdir = maximum(abs, D .- [dot(dG[m, i, :], v) for i in 1:N, m in 1:N]) / maximum(abs, D)
     @printf("    metric_directional against metric_derivative  %.3e\n", rdir)

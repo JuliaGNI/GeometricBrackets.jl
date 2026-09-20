@@ -118,8 +118,12 @@ method to a shared generic, which is exactly what this change does three times o
 
 All eight checks pass on the first run, with no exclusions: method ambiguity, unbound type
 parameters, undefined exports, `Project.toml` against `test/Project.toml`, stale dependencies,
-compat bounds, piracy and persistent tasks. Undefined exports is the one that would have caught
-an export list naming something that does not exist.
+compat bounds, piracy and persistent tasks. Seven of them can fail. The
+`Project.toml`/`test/Project.toml` comparison exists only to support Julia below 1.2, so a
+`julia = "1.11"` compat returns from it before it compares anything, and this package keeps
+its test dependencies in `[extras]` and `[targets]` rather than in a `test/Project.toml` in
+any case. Undefined exports is the one that would have caught an export list naming something
+that does not exist.
 
 ### Fixed — `CollisionBracket` is now frame-covariant on a mapped domain
 
