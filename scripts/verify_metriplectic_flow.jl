@@ -241,7 +241,7 @@ let rng = MersenneTwister(SEED + 2)
     v = randn(rng, N)
 
     for (name, b) in metric_brackets_2d(q)
-        D = PoissonBrackets.metric_directional(b, û, v)
+        D = metric_directional(b, û, v)
         Dfull = contracted_derivative(b, û, v)
         r = maximum(abs, D - Dfull) / maximum(abs, Dfull)
         check("the $(name) bracket agrees with the O(N^3) tensor", r < 1e-12,
@@ -261,9 +261,9 @@ let rng = MersenneTwister(SEED + 2)
         bracket = b(s, Λ)
         x = 0.3 .* randn(MersenneTwister(SEED + 3), nbasis(s))
         y = randn(MersenneTwister(SEED + 4), nbasis(s))
-        PoissonBrackets.metric_directional(bracket, x, y)            # warm up both paths
+        metric_directional(bracket, x, y)            # warm up both paths
         contracted_derivative(bracket, x, y)
-        td = minimum(@elapsed(PoissonBrackets.metric_directional(bracket, x, y))
+        td = minimum(@elapsed(metric_directional(bracket, x, y))
         for _ in 1:3)
         tt = minimum(@elapsed(contracted_derivative(bracket, x, y)) for _ in 1:3)
         (nbasis(s), td, tt, tt / td)

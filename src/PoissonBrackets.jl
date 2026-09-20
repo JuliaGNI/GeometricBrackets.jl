@@ -15,10 +15,11 @@ import Sparspak
 # generic function per accessor
 import GeometricBase: integrate, value
 import LinearAlgebra: issymmetric
-import SimpleSplines: basis, basis_integrals, basis_values, degree, domainlength,
-                      evaluate, l2_projection, mass_factorization, mass_matrix,
+import SimpleSplines: basis, basis_integrals, basis_values, degree, derivative_matrix,
+                      domainlength, evaluate, mass_factorization, mass_matrix,
                       mass_operator, mass_solve!, mixed_matrix, nbasis,
                       ncells, nodes, order, quadrature_nodes, quadrature_weights,
+                      stiffness_matrix, weighted_matrix,
                       pole, pole_triangle, pseudo_cartesian
 
 # Re-exported rather than defined: the LAPACK-backed factorisation lives in SimpleSolvers
@@ -31,7 +32,7 @@ export DiscreteSpace, SplineSpace, LagrangeSpace
 export space
 export basis, nbasis, degree, order, nodes, ncells, domainlength,
        mass_matrix, mass_factorization, inverse_mass_matrix,
-       basis_values, basis_integrals,
+       basis_values, basis_integrals, field,
        quadrature_nodes, quadrature_weights, project, project!, evaluate,
        derivative_matrix, stiffness_matrix, mixed_matrix, weighted_matrix,
        mass_operator, mass_solve!, nodal_derivative_matrix
@@ -62,7 +63,7 @@ export poisson_matrix, poisson_apply, poisson_tensor, isantisymmetric,
 include("brackets.jl")
 
 export MetricBracket, DoubleBracket, ProjectorBracket
-export metric_matrix, metric_apply, metric_derivative, metric_operator,
+export metric_matrix, metric_apply, metric_derivative, metric_directional, metric_operator,
        hamiltonian_field, project_orthogonal,
        issymmetric, ispositive_semidefinite, degeneracy_residual
 
@@ -116,7 +117,7 @@ export MassCasimir, QuadraticHamiltonian
 
 include("hamiltonians.jl")
 
-export AbstractFlow, HamiltonianFlow, vectorfield, vectorfield!, jacobian
+export AbstractFlow, HamiltonianFlow, bracket, vectorfield, vectorfield!, jacobian
 
 include("flows.jl")
 

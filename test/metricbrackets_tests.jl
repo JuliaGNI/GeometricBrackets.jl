@@ -127,7 +127,7 @@ end
         # the control that must fail, and the reason `degeneracy_residual` exists: drop the
         # ⊥ and use ∇h ⊗ ∇h. It is still symmetric and still positive semi-definite —
         # a Gram matrix is a Gram matrix — and only the degeneracy notices.
-        g = (PoissonBrackets.field(s, ĥ, (1, 0)), PoissonBrackets.field(s, ĥ, (0, 1)))
+        g = (field(s, ĥ, (1, 0)), field(s, ĥ, (0, 1)))
         A = tensor_weighted_matrix(s, PoissonBrackets._outer(g, g))
         @test maximum(abs, A - A') < 1e-14 * maximum(abs, A)
         @test minimum(eigvals(Symmetric(Matrix(A)))) > -1e-12 * maximum(abs, A)

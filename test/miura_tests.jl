@@ -13,7 +13,7 @@ using Test
             v̂ = project(s, miura_initial_v(2π))
             û = miura_map(s, v̂)
             lhs = dot(basis_integrals(s), û)
-            rhs = -dot(quadrature_weights(s), PoissonBrackets.field(s, v̂) .^ 2)
+            rhs = -dot(quadrature_weights(s), field(s, v̂) .^ 2)
             @test lhs ≈ rhs atol = 1e-12
             @test lhs < 0
         end

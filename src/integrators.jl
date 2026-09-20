@@ -673,11 +673,8 @@ function _step!(û, method::ProjectionMethod, integ::Integrator)
         append!(integ.targets, (hamiltonian(I, s, û) for I in method.invariants))
     end
 
-    if isexplicit(method.base)
-        _step!(û, method.base, integ)
-    else
-        _step!(û, method.base, integ)
-    end
+    # dispatch on the base method already separates the explicit step from the solver one
+    _step!(û, method.base, integ)
 
     project_invariants!(û, s, method.invariants, integ.targets)
 end

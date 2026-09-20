@@ -15,10 +15,10 @@ Q2def(z) = (z[1]^2 + z[2]^2) * I(2) - z * z'
 function bracket_samples(b, û)
     s = b.space
     x = quadrature_nodes(s)
-    u = PoissonBrackets.field(s, û, (0, 0))
+    u = field(s, û, (0, 0))
     M = [b.mobility(x[r], u[r]) for r in eachindex(u)]
     φ̂ = PoissonBrackets._generator(b, û)
-    ∇φ = (PoissonBrackets.field(s, φ̂, (1, 0)), PoissonBrackets.field(s, φ̂, (0, 1)))
+    ∇φ = (field(s, φ̂, (1, 0)), field(s, φ̂, (0, 1)))
     (; M, c = M .* quadrature_weights(s) .* b.density, ∇φ)
 end
 
@@ -334,7 +334,7 @@ end
         # ∂S/∂û = ∫ Φ_K ∂_y s dμ with ∂_y s = u / (Cr² + D)
         entropy_gradient(û) = basis_values(s, (0, 0)) *
                               (quadrature_weights(s) .* ρ .*
-                               PoissonBrackets.field(s, û, (0, 0)) ./ M)
+                               field(s, û, (0, 0)) ./ M)
         residual(û) = metric_apply(b, û, entropy_gradient(û))
 
         û₀ = randn(rng, N)
@@ -465,8 +465,8 @@ end
 
         v = randn(N)
         @test metric_apply(mapped, û, v) ≈ metric_apply(plain, û, v)
-        @test PoissonBrackets.metric_directional(mapped, û, v) ≈
-              PoissonBrackets.metric_directional(plain, û, v)
+        @test metric_directional(mapped, û, v) ≈
+              metric_directional(plain, û, v)
 
         # The pairing an identity map builds is the space's own mass matrix.
         @test Matrix(PoissonBrackets.weighted_matrix(s, volume_element(pb), (0, 0), (

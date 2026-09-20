@@ -10,6 +10,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Changed — the export list says which names are the interface
+
+Three names the package obliges someone else to use, and promised none of them.
+
+**`field`** is the `DiscreteSpace` interface method `field(s, û, d)`, defined on the abstract
+type and overridden by `TensorSplineSpace`. The package's own tests had to write
+`PoissonBrackets.field` fourteen times across seven files, and `MetriplecticRelaxation`
+imports it from this package's internals — no other package defines it, so there was nowhere
+public to take it from. That is the `space` symptom recorded below, seen from the other side: a
+downstream package depending on a name that could be renamed without notice. The fix belongs
+here, not downstream.
+
+**`metric_directional`** is documented as an override point — "the generic method here does
+form the tensor, so a bracket that defines only the three interface methods still has a correct
+Jacobian" — and `@autodocs` publishes it, while the tests and
+`scripts/verify_metriplectic_flow.jl` had to qualify it.
+
+**`bracket`** is the accessor a foreign flow must answer. `_poisson_bracket(f::AbstractFlow) =
+bracket(f)` exists precisely so that a flow defined elsewhere reports a missing accessor rather
+than a `FieldError`, which obliges that flow to define `PoissonBrackets.bracket`. It gains the
+docstring `checkdocs = :exports` requires, and it says what the other accessors do not: a flow
+need not have a Poisson half, so this is **not** one of the three `AbstractFlow` methods.
+
+**`weighted_matrix`, `derivative_matrix` and `stiffness_matrix` are one generic each again.**
+All three are exported by SimpleSplines and were given methods here without being imported, so
+each was a *different* function under the same name and `using PoissonBrackets, SimpleSplines`
+left all three ambiguous — a bare `stiffness_matrix` after that `using` raises `UndefVarError`
+saying so. They join `mixed_matrix` in the import list. The invariant is now checkable and
+holds: among the names both packages export, **none** resolves to two different bindings.
+
+```julia
+[n for n in intersect(names(PoissonBrackets), names(SimpleSplines))
+ if getfield(PoissonBrackets, n) !== getfield(SimpleSplines, n)]   # Symbol[]
+```
+
+Extending a foreign generic is piracy unless the method dispatches on a type defined here, so
+the two facts travel together: all twelve methods added to the three generics take a
+`DiscreteSpace`, a `TensorSplineSpace` or a `PolarSplineSpace`, and `Aqua.Piracy` says so
+rather than the author.
+
+One visible consequence in the manual: the three docstrings move from `PoissonBrackets.x` to
+`SimpleSplines.x` anchors, which is where `mixed_matrix`, `basis_values` and every other
+imported generic already sat. The text is unchanged and every `@ref` still resolves, but a
+permalink into one of the three changes.
+
+`l2_projection` leaves the import list. Nothing in `src/`, `test/`, `docs/` or `scripts/` uses
+it, and an import is the one thing that makes `PoissonBrackets.l2_projection` resolve for a
+caller who should be asking SimpleSplines.
+
+### Fixed — a conditional whose branches were identical
+
+`_step!(û, ::ProjectionMethod, integ)` read `if isexplicit(method.base); _step!(û,
+method.base, integ); else; _step!(û, method.base, integ); end`. The implicit branch once
+inlined the Newton solve; when that moved into `_step!(û, ::IntegratorMethod, integ)` the two
+branches became the same call, and dispatch on the base method already separates the explicit
+step from the solver one. The conditional is gone and `isexplicit` keeps both its other
+callers: the `Integrator` constructor, and the `ProjectionMethod` method that forwards to
+`isexplicit(m.base)`.
+
+Two docstrings recorded their own history — "as an earlier version did", "as an earlier version
+of this docstring and of `verify_burgers_discretisation.py` both did". The mechanism each was
+attached to is present tense and stays: scaling only the first residual block makes `cond(J)`
+200 to 1700 times worse, and pairing `2√u` with `𝕂/4` makes the flow four times too slow where
+no conservation test can see it.
+
+### Changed — the memoised tables say they are the cache
+
+`basis_values` and `mixed_matrix` on a `TensorSplineSpace` hand back the memoised matrix
+itself, so a caller that mutates one corrupts every later call on that space. Only the `D = 1`
+branch of `basis_values` copied, and its comment names a different hazard — `foldl` over a
+one-element tuple returning the *quadrature's* own table. Both docstrings now state the
+aliasing, and the new one-axis testset pins the `D = 1` copy.
+
+`_collision_operator_derivative` recomputed the diffusion tensor and the weight `ϱ = ρM` on
+each of the `N` columns of `metric_derivative` and `metric_directional`. They depend on the
+state and not on the perturbation, so they join the cross factors that both callers already
+hoist. The output is bit-identical. The saving is **a tenth of a per cent** of
+`metric_directional` — the `N` hoisted passes against the whole call, at `N = 100` on
+`TensorSplineSpace((10,10),3)` with a Λ-generated bracket, measured in one process and quoted
+as a ratio because the absolute times are a statement about the machine. So this removes dead
+work from the innermost Newton loop and is not a speedup; the before and after timings differ
+by less than the run-to-run spread.
+
+### Added — a testset for the one-axis `TensorSplineSpace`
+
+`D = 1` had no coverage at all. The reference is `SplineSpace(10, 3)` rather than a
+recomputation of the tensor assembly, so two code paths are compared instead of one with
+itself, and they agree **exactly**: the mass and stiffness matrices, both basis-value tables,
+`mixed_matrix((1,),(1,))`, `tensor_weighted_matrix` with `𝔻 = I` and `field` are equal to the
+last bit, because on one axis the Kronecker product has a single factor and no arithmetic
+happens. The testset also pins the memo (one object per multi-index), the `D = 1` copy (equal
+to the quadrature's table, never the same object), `M⁻¹M ≈ I`, and a `ProjectorBracket`
+degeneracy residual of 2.9e-16.
+
+### Added — an Aqua baseline, which this package had never had
+
+`test/aqua_tests.jl` runs `Aqua.test_all(PoissonBrackets)` as the first testset, and `Aqua`
+joins `[extras]`, `[targets]` and `[compat]`, in the shape SimpleSplines, SimpleSolvers and
+CompactBasisFunctions all use. Those three are dependencies of this package, and this package
+had nothing, so its whole-package properties had never been checked at all.
+
+**Piracy is why it matters here in particular.** The assembly interface extends SimpleSplines
+generics rather than defining its own, which is what keeps `using` both packages unambiguous —
+and every one of those methods is piracy unless it dispatches on a type defined here. That is a
+line the behavioural suite is structurally unable to see, and it gets crossed by adding one
+method to a shared generic, which is exactly what this change does three times over.
+
+All eight checks `Aqua.test_all` enables by default pass on the first run, and
+`test/aqua_tests.jl` excludes none of them: method ambiguity, unbound type parameters,
+undefined exports, `Project.toml` against `test/Project.toml`, stale dependencies, compat
+bounds, piracy and persistent tasks. Aqua 0.8.18 has a ninth, `undocumented_names`, which
+`test_all` itself defaults to `false`. Seven of the eight can fail. The
+`Project.toml`/`test/Project.toml` comparison exists only to support Julia below 1.2, so a
+`julia = "1.11"` compat returns from it before it compares anything, and this package keeps
+its test dependencies in `[extras]` and `[targets]` rather than in a `test/Project.toml` in
+any case. Undefined exports is the one that would have caught an export list naming something
+that does not exist.
+
 ### Fixed — `CollisionBracket` is now frame-covariant on a mapped domain
 
 `CollisionBracket` was not frame-covariant. Its assembly read the space's own derivative tables,
@@ -336,117 +454,6 @@ registration — SimpleSplines is still absent from General — so the `[sources
 which this package's own `[sources]` forces; the two environment tables are separate projects
 and do not bear on it.
 
-### Fixed — the metric-bracket half, second review round
-
-Four points from the review of the round below. Two change what a type outside this package
-has to write to satisfy an interface; none changes a computed result.
-
-**`space` is exported.** The round below made it one of the three methods of the
-`AbstractFlow` interface — "a flow that defines only `vectorfield` and `jacobian` cannot be
-integrated" — and then left it unexported, so the one thing a downstream flow is *obliged* to
-define could not be defined without qualifying the name. The package's own test had to write
-`PoissonBrackets.space(f)`, which is the symptom worth noticing. Its declaration also moves
-from `flows.jl` to `spaces.jl`: two interfaces now share the accessor, and that is the file
-included before either of them, so the declaration once again precedes its methods.
-
-**`MetricBracket` advertised three methods and needed five.** The docstring said the interface
-is `metric_matrix`, `metric_apply` and `metric_derivative` and that everything else follows
-from those. The two-argument `degeneracy_residual` does not follow from those: it reached
-`b.space`, and through `_generator` it reached `b.h`, so a bracket implementing exactly the
-documented interface got `FieldError: type … has no field 'space'`. The two extra hooks are
-now named in the docstring as what that one convenience costs, the reach goes through
-`space(b)` so a bracket missing it is refused by method name rather than by field name, and
-`DoubleBracket`, `ProjectorBracket` and `CollisionBracket` answer it. This is the fix the
-round below made for `AbstractFlow`, applied to the type it was not applied to.
-
-**`poisson_defect` on a flow from elsewhere.** `_poisson_bracket(f::AbstractFlow) = f.bracket`
-reinstated, for any flow that is not one of the two defined here, exactly the bare `FieldError`
-that the new `MetriplecticFlow` method exists to replace — and `bracket` is a field the
-`AbstractFlow` interface never asks anyone to store. It goes through the `bracket` accessor.
-
-**A guard that could not fire.** The `λmax > 0 || return all(iszero, λ)` line added to
-`ispositive_semidefinite` below is dead code. The relative test *multiplies* the tolerance by
-the scale rather than dividing by it, so at `λmax == 0` it already reads `minimum(λ) ≥ 0`,
-true exactly when every eigenvalue is zero, and at `λmax < 0` it already demands a positive
-lower bound that nothing below `λmax` can meet. The two forms agree on every input. The
-comment justifying the guard said "divide", which is what made it look load-bearing; guard and
-comment are both gone, and the replacement comment states the multiplication. The behaviour
-described below is unchanged, because it was already the behaviour without the guard.
-
-### Fixed — the metric-bracket half, after review
-
-Ten points from the review of the metric-bracket work below. Four of them change behaviour.
-
-**`ispositive_semidefinite` failed open below unit scale.** It compared the smallest eigenvalue
-against `-atol * max(1, λmax)`, so for any bracket whose largest eigenvalue is below one the
-test was *absolute* — and absolute in the direction that passes. `1e-12 * Diagonal([1, -1])`
-was reported semi-definite. It is now relative to `λmax`, as its docstring always claimed, and
-a matrix with no positive eigenvalue counts as semi-definite only if it is zero.
-
-**`degeneracy_residual(flow, û)` is new**, and it is the one to check on a `MetriplecticFlow`.
-`𝔾 ∂H/∂û = 0` relates two arguments of the constructor and nothing verifies that they match; a
-metric bracket generated by a *different* Hamiltonian is still a perfectly good metric bracket,
-and the flow then loses `H` at order one — 20 % over fifty implicit-midpoint steps in the
-one-dimensional projector example, against 1.3e-16 for the matching pair. The trap was that the
-obvious diagnostic could not see it: the two-argument `degeneracy_residual(bracket, û)` takes
-the gradient from the bracket, so it reports a mismatched pair as clean. The new method takes
-it from the flow. The precondition is now stated in the `MetriplecticFlow` docstring, where it
-was missing entirely.
-
-**`poisson_defect` refuses a `MetriplecticFlow`** rather than dying inside `poisson_matrix`
-with `MethodError: poisson_matrix(::Nothing, …)`. There are two reasons and the message says
-which one applies: the four-argument form carries no `𝔓` at all, and where there is one the
-metric half breaks the Poisson property *by construction*, so the number would measure the
-dissipation rather than the method — which is worse than refusing, because it looks like an
-answer.
-
-**The `ProjectorBracket` contraction no longer rebuilds the mass matrix.** `metric_apply`,
-`project_orthogonal`, `metric_directional` and the two-argument `degeneracy_residual` all need
-`𝕄 φ̂` and reached for `mass_matrix`, which is a stored constant on a `SplineSpace` but is
-rebuilt from the Kronecker factors on every call on a `TensorSplineSpace`. They go through the
-mass *operator* now. `metric_apply` on a `TensorSplineSpace` drops from 12 608 to 2 400 B at
-`N = 25`, 33 392 to 4 576 B at `N = 64`, and 75 312 to 9 056 B at `N = 144` — from "the mass
-matrix, every call" to "the vectors it returns". The docstring's claim that the cost is
-independent of the mesh is now true in fact and not only in algebra.
-
-**`space(flow)` belongs to the `AbstractFlow` interface**, and is documented and used as one.
-`Integrator` reached into `f.space` directly while the accessor existed, so a new flow could
-satisfy the documented interface — `vectorfield` and `jacobian` — and still not be integrable.
-The interface is three methods, and the docstring says so.
-
-**Which exclusion raises when.** `formulation = :mixed` raises at the `Integrator` constructor,
-from `mixed_jacobian_prototype`; `Gonzalez` and `GonzalezMass` construct happily and raise at
-the first `integrate_step!`, from inside the Newton callback. The `AbstractFlow` docstring
-presented the two as one thing and now tabulates the difference, which is what one needs when
-reading the failure off a run.
-
-**`stability_limit` no longer claims an imaginary spectrum for every flow.** `2√2` is the
-imaginary-axis crossing of the RK4 stability region and is the right constant for a
-`HamiltonianFlow`, whose antisymmetric `𝔓` puts the spectrum on that axis. A `MetriplecticFlow`
-has a negative real part by construction — that is what dissipation is — and the crossing on
-the negative real axis is 2.7853. On a dissipative field the returned value is an order of
-magnitude, not a threshold.
-
-**The recentring test asserted a rounding accident, and five of the eight CI jobs were red on
-it.** It required the *uncentred* `𝔻ₛ` to be indefinite at one or more quadrature nodes for one
-fixed `ε`, and whether the cancellation lands below zero or just above is decided by summation
-order: a majority of forty seeded draws lose semi-definiteness under `--check-bounds=auto` and
-**none of them** under `--check-bounds=yes`, which is what `Pkg.test()` uses. The testset now
-sweeps `ε` over six decades and asserts the *rate* instead — the centred form flat at round-off
-and semi-definite at every node throughout, the uncentred one degrading monotonically until it
-has no correct digits at all, already wrong by three orders more than the centred form at the
-loosest spread. Nothing is weakened: the separation asserted is fifteen orders. The
-indefiniteness claim is a statement about a distribution and is measured where one can be, in
-`verify_metric_collapse.jl`, which sweeps it over draws.
-
-**Documentation counts and pinned numbers.** `scripts.md` and `verification.md` said the driver
-runs "twenty-two" scripts; it runs twenty-four, and the two new ones now have index entries
-saying what each checks. The three `metric_directional` docstrings pinned wall-clock speedup
-ratios that had already drifted between machines; they state the qualitative claim now — an
-order of magnitude for `ProjectorBracket`, a constant factor for the assembled brackets, never
-slower — and leave the digits to the script that measures them. A dead `zz` binding in
-`verify_metric_collapse.jl`, kept alive by a comment recording its own history, is gone.
-
 ### Changed — the Julia floor is 1.11, which is what `[sources]` has always required
 
 `[compat] julia` said `"1.10"`, and 1.10 never worked. `[sources]` is a Pkg 1.11 feature: on
@@ -494,6 +501,14 @@ MetriplecticFlow(space, metric, hamiltonian, entropy)            # bracket = not
 is the second flow, with the matching **analytic** Jacobian. The four-argument form is the one
 the experiments run: the Poisson half is dropped and the field is purely dissipative.
 
+**The `AbstractFlow` interface is three methods** — `space`, `vectorfield` and `jacobian` — and
+the docstring says so. `Integrator` goes through `space(f)` rather than reaching into
+`f.space`, so a flow that satisfies the documented interface is integrable in fact. `space` is
+exported, because the one thing a downstream flow is *obliged* to define cannot be defined
+without a name to define it on. Its declaration lives in `spaces.jl` rather than `flows.jl`:
+two interfaces share the accessor and that is the file included before either of them, so the
+declaration precedes its methods.
+
 **Which conservation law comes from which half**, and they are independent. `H` is conserved
 *exactly* — 2.1e-15 normalised over two meshes × three quadrature orders × twenty random
 states — because `𝔾 ∂H/∂û = 0` is a property of the bracket, so no property of the quadrature
@@ -516,7 +531,9 @@ hand to **8.0e-16** for all four Λ-generated brackets. **The speedup is an orde
 projector bracket** — 12× at `N = 25` rising to 147× at `N = 121`, because it is closed form
 and assembles nothing. For the double and collision brackets the `N` perturbed assemblies
 dominate the `N` sandwiches that contracting removes: **2.1× and 1.9× at `N = 121`**, and not
-growing. Never slower is what survives, and it is the claim Newton depends on.
+growing. Never slower is what survives, and it is the claim Newton depends on. The three
+`metric_directional` docstrings state that qualitative claim and pin no digits: a wall-clock
+ratio drifts between machines, so the numbers belong to the script that measures them.
 
 **Newton must be iterated to a residual tolerance, not to a fixed iteration count.** `H` is
 conserved because the *converged* midpoint increment lies in the range of `𝔾(ū)`, and with a
@@ -530,18 +547,49 @@ which for this field *is* Crank-Nicolson — holds `H` to **8.0e-16** relative o
 down at every step, and the two agree to 5.3e-7 after 200 steps. No new solver code: the
 existing `SimpleSolvers.NewtonSolver` does the nonlinear solve unchanged.
 
+**`degeneracy_residual(flow, û)`** is the one to check on a `MetriplecticFlow`, and the
+`MetriplecticFlow` docstring states the precondition. `𝔾 ∂H/∂û = 0` relates two arguments of
+the constructor and nothing verifies that they match; a metric bracket generated by a
+*different* Hamiltonian is still a perfectly good metric bracket, and the flow then loses `H`
+at order one — 20 % over fifty implicit-midpoint steps in the one-dimensional projector
+example, against 1.3e-16 for the matching pair. The two-argument
+`degeneracy_residual(bracket, û)` cannot see it, because it takes the gradient from the
+bracket and so reports a mismatched pair as clean. The flow method takes it from the flow.
+
+**`poisson_defect` refuses a `MetriplecticFlow`** rather than dying inside `poisson_matrix`
+with `MethodError: poisson_matrix(::Nothing, …)`. There are two reasons and the message says
+which one applies: the four-argument form carries no `𝔓` at all, and where there is one the
+metric half breaks the Poisson property *by construction*, so the number would measure the
+dissipation rather than the method — which is worse than refusing, because it looks like an
+answer. For a flow defined elsewhere it goes through the `bracket` accessor rather than
+`f.bracket`, so such a flow reports the accessor it is missing instead of a bare `FieldError`
+about a field the `AbstractFlow` interface never asks anyone to store.
+
+**`stability_limit` does not claim an imaginary spectrum for every flow.** `2√2` is the
+imaginary-axis crossing of the RK4 stability region and is the right constant for a
+`HamiltonianFlow`, whose antisymmetric `𝔓` puts the spectrum on that axis. A `MetriplecticFlow`
+has a negative real part by construction — that is what dissipation is — and the crossing on
+the negative real axis is 2.7853. On a dissipative field the returned value is an order of
+magnitude, not a threshold.
+
 Two things that are easy to get wrong and are now recorded. The `Gonzalez` discrete-gradient
 methods are **not** available for a metriplectic flow and are still typed on
 `HamiltonianFlow` — they reach past `vectorfield` into the bracket and the Hamiltonian
 separately, there is no such construction for a dissipative half, and a silent fallback that
-integrated only the Poisson part would be worse than a `MethodError`. And `sin` is a poor
+integrated only the Poisson part would be worse than a `MethodError`. The `AbstractFlow`
+docstring tabulates *when* each exclusion raises, which is what one needs when reading the
+failure off a run: `formulation = :mixed` raises at the `Integrator` constructor, from
+`mixed_jacobian_prototype`, while `Gonzalez` and `GonzalezMass` construct happily and raise at
+the first `integrate_step!`, from inside the Newton callback. And `sin` is a poor
 initial condition for the 1D example: it is an eigenfunction of `−∂ₓ²`, so `∂S/∂û` is parallel
 to `∂H/∂û`, lands in the kernel of `𝔾`, and the whole vector field is 1e-13.
 
 `scripts/verify_metriplectic_flow.jl` archives all of it, including the finding that `{S,H}`
 vanishes on a uniform mesh — 4.8e-16, against 1.8e-2 on a graded one — because both quantities
 are quadratic forms in commuting circulants there. That is the same circulance accident as the
-KdV cross-conservation, and it is a statement about the mesh rather than an identity.
+KdV cross-conservation, and it is a statement about the mesh rather than an identity. It and
+`verify_metric_collapse.jl` are registered in `scripts/run_all.jl`, which both `scripts.md`
+and `verification.md` count, and each has an index row in `scripts.md` saying what it checks.
 
 ### Added — `CollisionBracket`, the §5.2 collision-like bracket, collapsed
 
@@ -580,10 +628,23 @@ implementations of the same operator, and they agree to **8.0e-16**.
 
 **Recentring is a correctness requirement, not a refinement**, and the test asserts the
 negative half. `Σ` is accumulated as `∫(β−β̄)⊗(β−β̄) M dμ'` directly; formed instead as
-`M₂ − m₀ β̄⊗β̄` it is the same algebra and it fails — at a gradient spread of `1e-8` about a mean
-of 3 its relative error is **0.21** and `𝔻_s` is **indefinite at 41 of 400** quadrature nodes,
-which flips the sign of the entropy production, while the centred form is at **1.2e-15** and
-positive semi-definite at 400/400. At a spread of `1e-10` the uncentred error reaches `1.8e+04`.
+`M₂ − m₀ β̄⊗β̄` it is the same algebra and it fails. The testset sweeps the gradient spread over
+six decades and asserts the **rate**: the centred form stays flat at round-off and
+semi-definite at every node throughout, the uncentred one degrades monotonically until it has
+no correct digits at all, and it is already wrong by three orders more than the centred form at
+the loosest spread. The separation asserted is fifteen orders. At a spread of `1e-8` about a
+mean of 3 the uncentred relative error is **0.21** against **1.2e-15** centred, and at `1e-10`
+it reaches `1.8e+04`.
+
+Whether the uncentred `𝔻_s` comes out *indefinite* at a given node is decided by summation
+order, so it is a statement about a distribution and is measured where one can be, in
+`verify_metric_collapse.jl`, which sweeps it over draws. A test that fixes one `ε` and one seed
+asserts a rounding accident: a majority of forty seeded draws lose semi-definiteness under
+`--check-bounds=auto` and **none of them** under `--check-bounds=yes`. Which of the two a run
+gets is itself version-dependent — up to Julia 1.12 `Pkg.test()` forced `yes`, and from 1.13 it
+runs the tests "with the same `check-bounds` setting as the current Julia session" — so the
+`Julia 1` and `Julia min` jobs of one CI matrix need not agree.
+
 The `q₁` terms are kept even though `q₁` vanishes at the centre: the bracket depends only on
 differences `β(x) − β(x')`, so the origin is free, and it is that freedom which makes
 `metric_derivative` analytic — the centre is frozen while `û` moves and `∂β̄/∂û` never appears.
@@ -621,12 +682,23 @@ about the hierarchy and the two local brackets.
 nothing dissipative, and `metriplectic_bracket` in `metriplectic.jl` acts on bare matrices and
 never meets a discretisation. `MetricBracket{T}` is the mirror image of `DiscreteBracket` and
 has the same three-method interface — `metric_matrix`, `metric_apply`, `metric_derivative` —
-with everything else written once and generically.
+with everything else written once and generically. The two-argument `degeneracy_residual` is
+the one convenience that costs more: it reaches the space and the generating field, so the
+docstring names those two hooks as part of what a bracket must answer, and the reach goes
+through `space(b)` rather than `b.space` so that a bracket missing it is refused by method name
+instead of by `FieldError` about a field the interface never asked anyone to store.
+`DoubleBracket`, `ProjectorBracket` and `CollisionBracket` answer all five.
 
 What is derived once is `issymmetric` (an extension of `LinearAlgebra.issymmetric`, so
 `using` both packages is unambiguous), `ispositive_semidefinite`, and `degeneracy_residual`.
-That last one is the point. A metric bracket must satisfy `(A, H) = 0` for every `A`, i.e.
-`𝔾 ∂H/∂û = 0`, and it is *that* which makes energy conservation a property of the bracket
+`ispositive_semidefinite` is **relative to `λmax`**, and relative by multiplying the tolerance
+by the scale rather than dividing by it: an absolute test would pass everything whose largest
+eigenvalue is below one, and `1e-12 * Diagonal([1, -1])` is the case that catches it. A matrix
+with no positive eigenvalue counts as semi-definite only if it is zero, which the multiplied
+form already gives without a separate guard for `λmax ≤ 0`.
+
+`degeneracy_residual` is the point. A metric bracket must satisfy `(A, H) = 0` for every `A`,
+i.e. `𝔾 ∂H/∂û = 0`, and it is *that* which makes energy conservation a property of the bracket
 rather than of the quadrature or the mesh. Whether a *one-step method* holds `H` exactly is a
 separate question about the method: the midpoint rule does, because for a quadratic `H` the
 identity `H(y) − H(x) = ∇H(ū)·(y − x)` is exact and the converged increment lies in the range
@@ -666,6 +738,17 @@ nonlinear `h` is not accepted rather than being differenced silently.
 column — on a `TensorSplineSpace` that is `D` one-dimensional solves per column — rather than
 through `inverse_mass_matrix`, whose `N²` storage `TensorSplineSpace` deliberately does not
 cache.
+
+The projector bracket's contraction goes through the mass **operator** for the same reason.
+`metric_apply`, `project_orthogonal`, `metric_directional` and the two-argument
+`degeneracy_residual` all need `𝕄 φ̂`; `mass_matrix` is a stored constant on a `SplineSpace` but
+is rebuilt from the Kronecker factors on every call on a `TensorSplineSpace`, so reaching for
+it would make the cost depend on the mesh after all. What `metric_apply` allocates on a
+`TensorSplineSpace` is the vectors it returns and not a mass matrix per call: it grows linearly
+in `N` — roughly 2.1 kB at `N = 25`, 4.0 kB at `N = 64` and 7.8 kB at `N = 144` for a
+`ProjectorBracket` built from a **prescribed** generating field on the periodic torus, under
+Julia 1.13 — where the matrix would have grown as `N²`. The docstring's claim that the cost is
+independent of the mesh is true in fact and not only in algebra.
 
 Measured, in `test/metricbrackets_tests.jl`, at `6 × 6` cubic cells on the torus (`N = 36`) and
 `16` cubic cells on the line (`N = 16`):

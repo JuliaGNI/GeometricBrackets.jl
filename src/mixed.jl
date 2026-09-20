@@ -139,10 +139,10 @@ step it had in fact solved.
 
 Scaling the *equation* rather than the tolerance fixes this, and it is applied **uniformly** to
 both row blocks. That distinction matters: scaling the blocks by different factors changes the
-conditioning, and scaling only the first (as an earlier version did) made `cond(J)` 200 to
-1700 times worse. A uniform factor multiplies the whole system, so the condition number and the
-Newton step are both exactly unchanged, and only the residual's magnitude moves — which is all
-the convergence test needs.
+conditioning, and scaling only the first makes `cond(J)` 200 to 1700 times worse. A uniform
+factor multiplies the whole system, so the condition number and the Newton step are both
+exactly unchanged, and only the residual's magnitude moves — which is all the convergence
+test needs.
 """
 mixed_row_scale(s::DiscreteSpace) = inv(opnorm(Matrix(mass_matrix(s)), Inf))
 

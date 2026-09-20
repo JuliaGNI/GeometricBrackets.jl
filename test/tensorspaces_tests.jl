@@ -1,7 +1,8 @@
 using PoissonBrackets
 using LinearAlgebra
 using Random
-using SimpleSplines: UniformMesh, GradedMesh, Periodic, Dirichlet, Free, KroneckerMass
+using SimpleSplines: UniformMesh, GradedMesh, Periodic, Dirichlet, Free, KroneckerMass,
+                     quadratures
 using SparseArrays
 using Test
 
@@ -102,10 +103,10 @@ end
 
         # a field already in the space projects onto its own coefficients
         v̂ = randn(rng, nbasis(s))
-        @test project(s, PoissonBrackets.field(s, v̂)) ≈ v̂
+        @test project(s, field(s, v̂)) ≈ v̂
         # and the in-place form agrees with the out-of-place one
         w = similar(v̂)
-        PoissonBrackets.project!(w, s, PoissonBrackets.field(s, v̂))
+        project!(w, s, field(s, v̂))
         @test w ≈ v̂
     end
 
@@ -262,6 +263,42 @@ end
         # a non-uniform mesh on one axis changes nothing structurally
         sg = TensorSplineSpace((GradedMesh(8, 2π), UniformMesh(8, 2π)), 3)
         @test sum(mass_matrix(sg)) ≈ domainvolume(sg)
+    end
+
+    @testset "$(rpad("at D = 1 the space IS the SplineSpace, to the last bit",76))" begin
+        # The reference is the one-dimensional space itself rather than a recomputation of
+        # the tensor assembly, so the two code paths are compared and not one of them with
+        # itself. They agree exactly, not approximately: on one axis the Kronecker product
+        # has a single factor and no arithmetic happens.
+        s = TensorSplineSpace((10,), 3)
+        r = SplineSpace(10, 3)
+        @test ndims(s) == 1
+        @test nbasis(s) == nbasis(r) == 10
+        @test degree(s) == (3,)
+        @test domainvolume(s) ≈ domainlength(s)[1]
+        @test Matrix(mass_matrix(s)) == Matrix(mass_matrix(r))
+        @test Matrix(stiffness_matrix(s)) == Matrix(stiffness_matrix(r))
+        @test Matrix(basis_values(s, (0,))) == Matrix(basis_values(r, 0))
+        @test Matrix(basis_values(s, (1,))) == Matrix(basis_values(r, 1))
+        @test Matrix(mixed_matrix(s, (1,), (1,))) == Matrix(stiffness_matrix(r))
+        @test Matrix(tensor_weighted_matrix(s, Matrix(1.0I, 1, 1))) ==
+              Matrix(stiffness_matrix(r))
+
+        û = randn(rng, nbasis(s))
+        @test field(s, û, (0,)) == field(r, û, 0)
+        @test inverse_mass_matrix(s) * Matrix(mass_matrix(s)) ≈ I
+
+        # the memo is one object per multi-index, and on one axis it is a copy rather than
+        # the quadrature's own table — see the warning on `basis_values`
+        @test basis_values(s, (0,)) === basis_values(s, (0,))
+        @test mixed_matrix(s, (1,), (1,)) === mixed_matrix(s, (1,), (1,))
+        q = quadratures(s.quadrature)[1]
+        @test basis_values(s, (1,)) == basis_values(q, 1)
+        @test basis_values(s, (1,)) !== basis_values(q, 1)
+
+        # a metric bracket built on it degenerates exactly as it does on two axes
+        b = ProjectorBracket(s, project(s, x -> sin(x[1])))
+        @test degeneracy_residual(b, û) < 1e-14
     end
 
     @testset "$(rpad("everything above works UNCHANGED in three dimensions",76))" begin

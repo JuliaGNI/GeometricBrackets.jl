@@ -191,6 +191,12 @@ generic implementations of `spaces.jl`.
 The table is the Kronecker product ``\Phi^{(D)}_{d_D} \otimes \dots \otimes \Phi^{(1)}_{d_1}``
 of the one-dimensional tables, in reverse axis order because the flattening runs the first
 axis fastest.
+
+!!! warning "The result is the cache, not a copy"
+    Every call for the same `d` hands back the one memoised matrix, so mutating it corrupts
+    every later call on that space. Take a `copy` before writing into it. The same holds for
+    [`mixed_matrix`](@ref), and this is the only aliasing on either: the `D = 1` branch below
+    copies the quadrature's own table, so the memo never aliases the quadrature.
 """
 function basis_values(s::TensorSplineSpace{T, D}, d::NTuple{D, Int}) where {T, D}
     get!(s.Φ, d) do
@@ -219,6 +225,9 @@ These are constants of the discretisation — the mass matrix is `a = b = 0` and
 ``\partial_k \partial_l`` blocks of [`tensor_weighted_matrix`](@ref) with a constant
 coefficient are the rest — so they are assembled once per space rather than once per Newton
 iteration, as they are for a `SplineSpace`.
+
+Memoised means the result is the cache itself, as for [`basis_values`](@ref): mutating it
+corrupts every later call on that space, so take a `copy` before writing into it.
 """
 function mixed_matrix(s::TensorSplineSpace{T, D}, a::NTuple{D, Int},
         b::NTuple{D, Int}) where {T, D}

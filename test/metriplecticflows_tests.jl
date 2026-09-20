@@ -159,7 +159,7 @@ end
         for b in (DoubleBracket(s, Λ), ProjectorBracket(s, Λ), CollisionBracket(s, Λ),
             CollisionBracket(s, Λ; mobility = (x, u) -> 1 + u^2,
             mobility_derivative = (x, u) -> 2u))
-            D = PoissonBrackets.metric_directional(b, û, v)
+            D = metric_directional(b, û, v)
             Dfull = contracted_derivative(b, û, v)
             @test size(D) == (N, N)
             @test maximum(abs, D - Dfull) < 1e-12 * maximum(abs, Dfull)
@@ -170,14 +170,14 @@ end
         # then identically zero without any assembly
         ĥ = project(s, p -> cos(p[1])^2 * sin(p[2])^2)
         for b in (DoubleBracket(s, ĥ), ProjectorBracket(s, ĥ), CollisionBracket(s, ĥ))
-            @test PoissonBrackets.metric_directional(b, û, v) == zeros(N, N)
+            @test metric_directional(b, û, v) == zeros(N, N)
         end
 
         # the generic fallback -- a bracket that defines only the three interface methods --
         # still answers, by forming the tensor
         G = Matrix(mass_matrix(s))
         nb = NegativeMetricBracket(-G)
-        @test PoissonBrackets.metric_directional(nb, û, v) == zeros(N, N)
+        @test metric_directional(nb, û, v) == zeros(N, N)
     end
 
     @testset "$(rpad("H is conserved to ROUND-OFF while S falls MONOTONICALLY",76))" begin

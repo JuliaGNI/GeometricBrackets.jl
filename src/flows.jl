@@ -40,6 +40,21 @@ until a step is taken.
 """
 abstract type AbstractFlow{T} end
 
+"""
+    bracket(flow)
+
+The [`DiscreteBracket`](@ref) generating the Poisson half of `flow`.
+
+Not one of the three methods of the [`AbstractFlow`](@ref) interface: a flow need not have a
+Poisson half, and a [`MetriplecticFlow`](@ref) built with the four-argument constructor has
+none. It is what [`poisson_defect`](@ref) asks for, and it is written as an accessor rather
+than as `flow.bracket` so that a flow defined outside this package can answer it without
+storing a field of that name, and so that one which answers it nowhere fails with a
+`MethodError` naming the method rather than a `FieldError` naming a field the interface never
+asked for.
+"""
+function bracket end
+
 @doc raw"""
     HamiltonianFlow(space, bracket, hamiltonian)
 

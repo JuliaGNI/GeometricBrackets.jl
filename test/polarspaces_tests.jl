@@ -60,9 +60,8 @@ using Test
         for x in [(0.0, 0.0), (0.0, 2.9), (0.5, 1.0), (1.0, 4.0)])
 
         # `field` is the tabulation, and `project` inverts it on a representable function.
-        # Qualified: `field` is not exported.
         v̂ = project(s, x -> 1 - x[1]^2)
-        @test maximum(abs, PoissonBrackets.field(s, v̂, (0, 0)) .-
+        @test maximum(abs, field(s, v̂, (0, 0)) .-
                            [1 - x[1]^2 for x in quadrature_nodes(s)]) <
               1e-11
     end

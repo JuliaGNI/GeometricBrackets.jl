@@ -481,22 +481,27 @@ function _collision_operator(b::CollisionBracket{T}, st) where {T}
     _cross_operator(f, f)
 end
 
-# `f` is the state's own cross factors. They depend on the state and not on the perturbation,
-# so both callers build them once and pass them across their loop over the N directions.
-function _collision_operator_derivative(b::CollisionBracket{T}, st, f, δγ, δc, δM) where {T}
+# The diffusion tensor, the weight `ϱ` and the cross factors depend on the state and not on
+# the perturbation, so both callers build them once and pass them across their loop over the
+# N directions.
+function _derivative_invariants(b::CollisionBracket, st)
+    (; 𝔻 = _diffusion_tensor(st),
+        ϱ = b.density .* st.M, f = _cross_factors(_tables(b), st.c, st.γ))
+end
+
+function _collision_operator_derivative(
+        b::CollisionBracket{T}, st, held, δγ, δc, δM) where {T}
     s = b.space
-    𝔻 = _diffusion_tensor(st)
     δ𝔻 = _diffusion_tensor_derivative(st, δγ, δc)
-    ϱ = b.density .* st.M
     δϱ = b.density .* δM
     coefficient = Matrix{Vector{T}}(undef, 2, 2)
     for l in 1:2, k in 1:2
 
-        coefficient[k, l] = δϱ .* 𝔻[k, l] .+ ϱ .* δ𝔻[k, l]
+        coefficient[k, l] = δϱ .* held.𝔻[k, l] .+ held.ϱ .* δ𝔻[k, l]
     end
     δf = _cross_factors_derivative(_tables(b), st.c, st.γ, δc, δγ)
     Matrix(tensor_weighted_matrix(s, _conjugate(b.frame, coefficient))) .-
-    _cross_operator(δf, f) .- _cross_operator(f, δf)
+    _cross_operator(δf, held.f) .- _cross_operator(held.f, δf)
 end
 
 function _cross_factors_derivative(P, c, γ, δc, δγ)
@@ -619,7 +624,7 @@ function metric_derivative(b::CollisionBracket{T}, û::AbstractVector) where {T}
 
     Φ = basis_values(s, (0, 0))
     F = _factorization(b)
-    f = _cross_factors(_tables(b), st.c, st.γ)
+    held = _derivative_invariants(b, st)
     zero_samples = zeros(T, length(st.μ))
     for m in 1:N
         δM = st.Mu .* Vector(Φ[m, :])
@@ -631,7 +636,7 @@ function metric_derivative(b::CollisionBracket{T}, û::AbstractVector) where {T}
             (zero_samples, zero_samples)
         end
         dG[m, :, :] = _mass_sandwich(
-            F, _collision_operator_derivative(b, st, f, δγ, δc, δM))
+            F, _collision_operator_derivative(b, st, held, δγ, δc, δM))
     end
     return dG
 end
@@ -667,7 +672,7 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
     F = _factorization(b)
     w = F \ Vector(v)
     Φ = basis_values(s, (0, 0))
-    f = _cross_factors(_tables(b), st.c, st.γ)
+    held = _derivative_invariants(b, st)
     zero_samples = zeros(T, length(st.μ))
     for m in 1:N
         δM = st.Mu .* Vector(Φ[m, :])
@@ -678,7 +683,7 @@ function metric_directional(b::CollisionBracket{T}, û::AbstractVector,
         else
             (zero_samples, zero_samples)
         end
-        D[:, m] = F \ (_collision_operator_derivative(b, st, f, δγ, δc, δM) * w)
+        D[:, m] = F \ (_collision_operator_derivative(b, st, held, δγ, δc, δM) * w)
     end
     return D
 end
