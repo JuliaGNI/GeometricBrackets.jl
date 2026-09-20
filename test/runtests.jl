@@ -8,6 +8,7 @@ using Test
 # reproducible.
 Random.seed!(0x5c1e9a3b)
 
+include("aqua_tests.jl")
 include("exact_tests.jl")
 include("spaces_tests.jl")
 include("tensorspaces_tests.jl")

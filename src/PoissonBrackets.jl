@@ -15,11 +15,12 @@ import Sparspak
 # generic function per accessor
 import GeometricBase: integrate, value
 import LinearAlgebra: issymmetric
-import SimpleSplines: basis, basis_integrals, basis_values, degree, domainlength,
-                      evaluate, mass_factorization, mass_matrix,
+import SimpleSplines: basis, basis_integrals, basis_values, degree, derivative_matrix,
+                      domainlength, evaluate, mass_factorization, mass_matrix,
                       mass_operator, mass_solve!, mixed_matrix, nbasis,
                       ncells, nodes, order, quadrature_nodes, quadrature_weights,
-                      weighted_matrix, pole, pole_triangle, pseudo_cartesian
+                      stiffness_matrix, weighted_matrix,
+                      pole, pole_triangle, pseudo_cartesian
 
 # Re-exported rather than defined: the LAPACK-backed factorisation lives in SimpleSolvers
 # as of 0.12.2, but it is this package's default `linear_solver_method`, so it has to be

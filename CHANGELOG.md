@@ -33,10 +33,27 @@ than a `FieldError`, which obliges that flow to define `PoissonBrackets.bracket`
 docstring `checkdocs = :exports` requires, and it says what the other accessors do not: a flow
 need not have a Poisson half, so this is **not** one of the three `AbstractFlow` methods.
 
-**`weighted_matrix` is one generic again.** It is exported by SimpleSplines and was given
-methods here without being imported, so `PoissonBrackets.weighted_matrix` was a *different*
-function and `using PoissonBrackets, SimpleSplines` left the name ambiguous. It joins
-`mixed_matrix` in the import list; the one generic carries ten methods, six of them from here.
+**`weighted_matrix`, `derivative_matrix` and `stiffness_matrix` are one generic each again.**
+All three are exported by SimpleSplines and were given methods here without being imported, so
+each was a *different* function under the same name and `using PoissonBrackets, SimpleSplines`
+left all three ambiguous — a bare `stiffness_matrix` after that `using` raises `UndefVarError`
+saying so. They join `mixed_matrix` in the import list. The invariant is now checkable and
+holds: among the names both packages export, **none** resolves to two different bindings.
+
+```julia
+[n for n in intersect(names(PoissonBrackets), names(SimpleSplines))
+ if getfield(PoissonBrackets, n) !== getfield(SimpleSplines, n)]   # Symbol[]
+```
+
+Extending a foreign generic is piracy unless the method dispatches on a type defined here, so
+the two facts travel together: all twelve methods added to the three generics take a
+`DiscreteSpace`, a `TensorSplineSpace` or a `PolarSplineSpace`, and `Aqua.Piracy` says so
+rather than the author.
+
+One visible consequence in the manual: the three docstrings move from `PoissonBrackets.x` to
+`SimpleSplines.x` anchors, which is where `mixed_matrix`, `basis_values` and every other
+imported generic already sat. The text is unchanged and every `@ref` still resolves, but a
+permalink into one of the three changes.
 
 `l2_projection` leaves the import list. Nothing in `src/`, `test/`, `docs/` or `scripts/` uses
 it, and an import is the one thing that makes `PoissonBrackets.l2_projection` resolve for a
@@ -85,6 +102,24 @@ last bit, because on one axis the Kronecker product has a single factor and no a
 happens. The testset also pins the memo (one object per multi-index), the `D = 1` copy (equal
 to the quadrature's table, never the same object), `M⁻¹M ≈ I`, and a `ProjectorBracket`
 degeneracy residual of 2.9e-16.
+
+### Added — an Aqua baseline, which this package had never had
+
+`test/aqua_tests.jl` runs `Aqua.test_all(PoissonBrackets)` as the first testset, and `Aqua`
+joins `[extras]`, `[targets]` and `[compat]`, in the shape SimpleSplines, SimpleSolvers and
+CompactBasisFunctions all use. Those three are dependencies of this package, and this package
+had nothing, so its whole-package properties had never been checked at all.
+
+**Piracy is why it matters here in particular.** The assembly interface extends SimpleSplines
+generics rather than defining its own, which is what keeps `using` both packages unambiguous —
+and every one of those methods is piracy unless it dispatches on a type defined here. That is a
+line the behavioural suite is structurally unable to see, and it gets crossed by adding one
+method to a shared generic, which is exactly what this change does three times over.
+
+All eight checks pass on the first run, with no exclusions: method ambiguity, unbound type
+parameters, undefined exports, `Project.toml` against `test/Project.toml`, stale dependencies,
+compat bounds, piracy and persistent tasks. Undefined exports is the one that would have caught
+an export list naming something that does not exist.
 
 ### Fixed — `CollisionBracket` is now frame-covariant on a mapped domain
 
