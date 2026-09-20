@@ -68,10 +68,12 @@ aliasing, and the new one-axis testset pins the `D = 1` copy.
 `_collision_operator_derivative` recomputed the diffusion tensor and the weight `ϱ = ρM` on
 each of the `N` columns of `metric_derivative` and `metric_directional`. They depend on the
 state and not on the perturbation, so they join the cross factors that both callers already
-hoist. The output is bit-identical. The saving is **0.1 %** — at `N = 100` on
-`TensorSplineSpace((10,10),3)`, one pass costs 0.0036 ms against 443 ms for the whole
-`metric_directional`, well inside the run-to-run spread — so this removes dead work from the
-innermost Newton loop and is not a speedup.
+hoist. The output is bit-identical. The saving is **a tenth of a per cent** of
+`metric_directional` — the `N` hoisted passes against the whole call, at `N = 100` on
+`TensorSplineSpace((10,10),3)` with a Λ-generated bracket, measured in one process and quoted
+as a ratio because the absolute times are a statement about the machine. So this removes dead
+work from the innermost Newton loop and is not a speedup; the before and after timings differ
+by less than the run-to-run spread.
 
 ### Added — a testset for the one-axis `TensorSplineSpace`
 
@@ -544,8 +546,8 @@ to `∂H/∂û`, lands in the kernel of `𝔾`, and the whole vector field is 1e
 vanishes on a uniform mesh — 4.8e-16, against 1.8e-2 on a graded one — because both quantities
 are quadratic forms in commuting circulants there. That is the same circulance accident as the
 KdV cross-conservation, and it is a statement about the mesh rather than an identity. It and
-`verify_metric_collapse.jl` have index entries in `scripts.md` and `verification.md` saying
-what each checks.
+`verify_metric_collapse.jl` are registered in `scripts/run_all.jl`, which both `scripts.md`
+and `verification.md` count, and each has an index row in `scripts.md` saying what it checks.
 
 ### Added — `CollisionBracket`, the §5.2 collision-like bracket, collapsed
 
