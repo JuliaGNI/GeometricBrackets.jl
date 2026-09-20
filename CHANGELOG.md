@@ -695,9 +695,12 @@ The projector bracket's contraction goes through the mass **operator** for the s
 `metric_apply`, `project_orthogonal`, `metric_directional` and the two-argument
 `degeneracy_residual` all need `𝕄 φ̂`; `mass_matrix` is a stored constant on a `SplineSpace` but
 is rebuilt from the Kronecker factors on every call on a `TensorSplineSpace`, so reaching for
-it would make the cost depend on the mesh after all. `metric_apply` on a `TensorSplineSpace`
-allocates 2 400 B at `N = 25`, 4 576 B at `N = 64` and 9 056 B at `N = 144` — the vectors it
-returns, and not the mass matrix on every call.
+it would make the cost depend on the mesh after all. What `metric_apply` allocates on a
+`TensorSplineSpace` is the vectors it returns and not a mass matrix per call: it grows linearly
+in `N` — roughly 2.1 kB at `N = 25`, 4.0 kB at `N = 64` and 7.8 kB at `N = 144` for a
+`ProjectorBracket` on the periodic torus under Julia 1.13 — where the matrix would have grown
+as `N²`. The docstring's claim that the cost is independent of the mesh is true in fact and not
+only in algebra.
 
 Measured, in `test/metricbrackets_tests.jl`, at `6 × 6` cubic cells on the torus (`N = 36`) and
 `16` cubic cells on the line (`N = 16`):
