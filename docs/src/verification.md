@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Verification
@@ -101,7 +101,7 @@ drifting silently away from the manuscript.
     small-amplitude field costs an explicit method no step-count penalty at all.
   - **Window rounding.** `NT ÷ NOUT` against the Python's `round(NT / NOUT)`.
   - **`casimir_gradient` was exported and never defined.** It appeared in the export list of
-    `src/PoissonBrackets.jl` with no method anywhere in `src/`, which under
+    `src/GeometricBrackets.jl` with no method anywhere in `src/`, which under
     `checkdocs = :exports` is a latent documentation failure as well as a dangling name. The
     export is removed; nothing referenced it.
 

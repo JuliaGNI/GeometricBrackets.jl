@@ -20,7 +20,7 @@
 # Exact rational arithmetic throughout, so "the residual vanishes" means it is zero and not
 # that it is smaller than a tolerance someone chose.
 
-using PoissonBrackets
+using GeometricBrackets
 using Random
 
 include(joinpath(@__DIR__, "check.jl"));

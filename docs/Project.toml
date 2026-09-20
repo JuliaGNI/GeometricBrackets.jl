@@ -2,12 +2,12 @@
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 CompactBasisFunctions = "a09551c4-f815-4143-809e-dd1986753ba7"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-PoissonBrackets = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
+GeometricBrackets = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
 SimpleSolvers = "36b790f5-6434-4fbe-b711-1f64a1e2f6a2"
 SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 
 [sources]
-PoissonBrackets = {path = ".."}
+GeometricBrackets = {path = ".."}
 SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
 
 [compat]

@@ -63,7 +63,7 @@
 # Exact rational arithmetic wherever the claim is "this vanishes"; Float64 with a refinement
 # study wherever it is "this converges".
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using Printf

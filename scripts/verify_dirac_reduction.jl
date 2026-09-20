@@ -20,7 +20,7 @@
 # separate float assembly with an SVD for the V2 complement, which is not needed: the exact
 # one costs 1.7 s at the largest size here.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

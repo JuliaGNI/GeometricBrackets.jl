@@ -1,8 +1,8 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
-# PoissonBrackets.jl
+# GeometricBrackets.jl
 
 Structure-preserving discretisations of the Poisson brackets of one-dimensional Hamiltonian
 partial differential equations.
@@ -15,7 +15,7 @@ asked and answered one property at a time.
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/JuliaGNI/PoissonBrackets.jl")
+Pkg.add(url = "https://github.com/JuliaGNI/GeometricBrackets.jl")
 ```
 
 ## The pieces
@@ -33,7 +33,7 @@ Pkg.add(url = "https://github.com/JuliaGNI/PoissonBrackets.jl")
 ## A first run
 
 ```@example intro
-using PoissonBrackets
+using GeometricBrackets
 
 sys = KdVSystem(SplineSpace(32, 3))
 û₀  = project(sys.space, cosine(2π))

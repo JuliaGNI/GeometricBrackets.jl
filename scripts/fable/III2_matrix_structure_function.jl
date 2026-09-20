@@ -39,7 +39,7 @@
 using LinearAlgebra
 using Random
 using Printf
-using PoissonBrackets: jacobi_residual, exact_rank
+using GeometricBrackets: jacobi_residual, exact_rank
 
 include(joinpath(@__DIR__, "..", "check.jl"))
 using .Checks: header, check, summary, fmt

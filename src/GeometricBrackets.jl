@@ -1,4 +1,4 @@
-module PoissonBrackets
+module GeometricBrackets
 
 using CompactBasisFunctions
 using LinearAlgebra
@@ -24,7 +24,7 @@ import SimpleSplines: basis, basis_integrals, basis_values, degree, derivative_m
 
 # Re-exported rather than defined: the LAPACK-backed factorisation lives in SimpleSolvers
 # as of 0.12.2, but it is this package's default `linear_solver_method`, so it has to be
-# nameable without qualification by anyone who has only done `using PoissonBrackets`.
+# nameable without qualification by anyone who has only done `using GeometricBrackets`.
 using SimpleSolvers: LapackLU
 export LapackLU
 

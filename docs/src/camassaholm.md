@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Camassa-Holm
@@ -40,7 +40,7 @@ with ``\mathbb{A}`` the ``H^1`` Gram matrix, symmetric positive definite. Use
 [`velocity`](@ref) and [`momentum`](@ref) to move between the two.
 
 ```@example ch
-using PoissonBrackets
+using GeometricBrackets
 sys = CamassaHolmSystem(SplineSpace(48, 3))
 m̂ = momentum(sys, project(sys.space, x -> 1 + 0.5sin(x)))
 maximum(abs, vectorfield(sys.flow1, m̂) - vectorfield(sys.flow2, m̂))
@@ -86,6 +86,6 @@ of speed `c`.
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["equations/camassaholm.jl"]
 ```

@@ -46,7 +46,7 @@
 using LinearAlgebra
 using Random
 using Printf
-using PoissonBrackets: jacobi_residual, structure_constant_residual
+using GeometricBrackets: jacobi_residual, structure_constant_residual
 
 include(joinpath(@__DIR__, "..", "check.jl"))
 using .Checks: header, check, check_exact, summary, fmt

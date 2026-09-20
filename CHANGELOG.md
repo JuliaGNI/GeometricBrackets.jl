@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Changed — the package is renamed to GeometricBrackets
+
+`PoissonBrackets` becomes `GeometricBrackets`, and the repository becomes
+`JuliaGNI/GeometricBrackets.jl`. The name said Poisson, but the package carries metric
+brackets, collision brackets, four-brackets and metriplectic flows as well, so the old name
+described a part of it.
+
+What a caller changes: `using PoissonBrackets` becomes `using GeometricBrackets`, and a
+`[deps]` or `[sources]` entry changes its key and its url. **The UUID does not change**, so a
+manifest keeps resolving to the same package. The package extension is renamed with the
+module, `PoissonBracketsMakieExt` to `GeometricBracketsMakieExt`; loading `CairoMakie` still
+brings in the same plot methods.
+
+The documentation moves to `https://JuliaGNI.github.io/GeometricBrackets.jl`. GitHub redirects
+the old repository url, so an existing clone keeps fetching, but its `origin` should be
+repointed.
+
+The entries below this one were written under the old name and keep it.
+
 ### Changed — the export list says which names are the interface
 
 Three names the package obliges someone else to use, and promised none of them.

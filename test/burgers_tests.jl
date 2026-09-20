@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Test
 
@@ -79,8 +79,8 @@ dudx(x) = cos(x) - 0.6sin(2x)
     @testset "$(rpad("in the sqrt variables the bracket is constant and the Casimir linear",76))" begin
         s = LagrangeSpace(2, 7)
         u = uex.(nodes(s))
-        ū = PoissonBrackets.to_sqrt_variables(u)
-        @test PoissonBrackets.from_sqrt_variables(ū) ≈ u
+        ū = GeometricBrackets.to_sqrt_variables(u)
+        @test GeometricBrackets.from_sqrt_variables(ū) ≈ u
         # C = 2 (∫φ_i) ⋅ ū exactly, which is why any symplectic method holds it at any step.
         # The 2 is the antiderivative of 1/g: G(u) = 2√u, and ū = √u.
         @test 2 * dot(basis_integrals(s), ū) ≈ hamiltonian(burgers_casimir(s), s, u)
@@ -101,7 +101,7 @@ dudx(x) = cos(x) - 0.6sin(2x)
         sys = BurgersSystem(s)
         udot = vectorfield(sys.flow, u)                      # u-space, reproduces 3 u u_x
 
-        ū = PoissonBrackets.to_sqrt_variables(u)
+        ū = GeometricBrackets.to_sqrt_variables(u)
         # d(√u)/dt = u̇ / (2√u), the pushforward of the u-space field
         ūdot = udot ./ (2 .* sqrt.(u))
         # ∂H/∂ū_i = 2 √u_i (M u)_i

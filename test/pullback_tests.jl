@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 # By name, never a bare `using SimpleSplines`: every test file is included into the same
 # `Main`, and `stiffness_matrix`, `weighted_matrix` and `derivative_matrix` are each a
@@ -85,7 +85,7 @@ using Test
 
         # CONTROL: the plain parameter-square stiffness is a different operator. Qualified
         # because `stiffness_matrix` is a separate generic in each of the two packages loaded.
-        plain = dot(v̂, PoissonBrackets.stiffness_matrix(s) * û)
+        plain = dot(v̂, GeometricBrackets.stiffness_matrix(s) * û)
         @test abs(plain - exact) / abs(exact) > 1e-2
 
         # CONTROL: the measure kept and the metric dropped — the error an area check cannot

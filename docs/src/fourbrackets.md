@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Poisson brackets from four-brackets
@@ -225,20 +225,20 @@ residual that moves is a signal rather than noise.
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["torus.jl"]
 ```
 
 ### The brackets
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["fourbrackets.jl"]
 ```
 
 ### The metriplectic bracket
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["metriplectic.jl"]
 ```

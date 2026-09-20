@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh, Dirichlet, Free, Periodic, (..)
@@ -17,7 +17,7 @@ function bracket_samples(b, û)
     x = quadrature_nodes(s)
     u = field(s, û, (0, 0))
     M = [b.mobility(x[r], u[r]) for r in eachindex(u)]
-    φ̂ = PoissonBrackets._generator(b, û)
+    φ̂ = GeometricBrackets._generator(b, û)
     ∇φ = (field(s, φ̂, (1, 0)), field(s, φ̂, (0, 1)))
     (; M, c = M .* quadrature_weights(s) .* b.density, ∇φ)
 end
@@ -73,7 +73,7 @@ end
 # `Σ` formed as `M₂ - m₀ β̄ ⊗ β̄` rather than accumulated centred: the one variant of the
 # collapse that is algebraically identical and numerically wrong.
 function uncentred_diffusion(b, û)
-    st = PoissonBrackets._collision_state(b, û)
+    st = GeometricBrackets._collision_state(b, û)
     smp = bracket_samples(b, û)
     β = (-smp.∇φ[2], smp.∇φ[1])
     c, m₀, γ = st.c, st.m₀, st.γ
@@ -175,7 +175,7 @@ end
         s, b = dirichlet_bracket()
         N = nbasis(s)
         û = randn(rng, N)
-        φ̂ = PoissonBrackets._generator(b, û)
+        φ̂ = GeometricBrackets._generator(b, û)
 
         # Q₂(z) z = 0 holds at every *pair* of quadrature points, so this is exact at the
         # discrete level and not only in the continuum
@@ -194,8 +194,8 @@ end
         # of gradients is annihilated — so it is the nonlocal cross term that carries the
         # degeneracy, and an implementation that dropped it would still be symmetric and
         # positive semi-definite.
-        st = PoissonBrackets._collision_state(b, û)
-        𝔻 = PoissonBrackets._diffusion_tensor(st)
+        st = GeometricBrackets._collision_state(b, û)
+        𝔻 = GeometricBrackets._diffusion_tensor(st)
         ϱ = b.density .* st.M
         Aloc = tensor_weighted_matrix(s, [ϱ .* 𝔻[k, l] for k in 1:2, l in 1:2])
         @test minimum(eigvals(Symmetric(Matrix(Aloc)))) > -1e-12 * maximum(abs, Aloc)
@@ -232,7 +232,7 @@ end
                                                   ε * (sin(4p[1]) * cos(3p[2]) + p[2]^2)))
               for ε in εs]
         refs = [double_sum_diffusion(b, û) for b in bs]
-        centred = [PoissonBrackets._diffusion_tensor(b, û) for b in bs]
+        centred = [GeometricBrackets._diffusion_tensor(b, û) for b in bs]
         raw = [uncentred_diffusion(b, û) for b in bs]
         ec = [tensor_error(centred[i], refs[i]) for i in eachindex(εs)]
         er = [tensor_error(raw[i], refs[i]) for i in eachindex(εs)]
@@ -301,7 +301,7 @@ end
 
         # the mobility half on its own: a prescribed φ, so the only state dependence left
         # is M(x, u), and it must still be found
-        bm = CollisionBracket(s, PoissonBrackets._generator(b, û);
+        bm = CollisionBracket(s, GeometricBrackets._generator(b, û);
             mobility = (x, u) -> 0.5 + u^2, mobility_derivative = (x, u) -> 2u,
             density = b.density)
         dGm = metric_derivative(bm, û)
@@ -311,7 +311,7 @@ end
 
         # and with neither dependence the bracket is constant, which is asserted rather
         # than assembled N times
-        bc = CollisionBracket(s, PoissonBrackets._generator(b, û); density = b.density)
+        bc = CollisionBracket(s, GeometricBrackets._generator(b, û); density = b.density)
         @test metric_derivative(bc, û) == zeros(N, N, N)
         @test metric_matrix(bc, û) ≈ metric_matrix(bc, randn(rng, N))
     end
@@ -443,7 +443,7 @@ end
 
         # A mobility is a function of the physical point once a pullback is supplied.
         bx = CollisionBracket(s, φ̂, pb; mobility = (x, u) -> x[1], mobility_derivative = 0)
-        @test PoissonBrackets._collision_state(bx, û).M ≈ [x[1] for x in nodes(pb)]
+        @test GeometricBrackets._collision_state(bx, û).M ≈ [x[1] for x in nodes(pb)]
     end
 
     @testset "$(rpad("an IDENTITY pullback reproduces the unmapped bracket",76))" begin
@@ -469,7 +469,7 @@ end
               metric_directional(plain, û, v)
 
         # The pairing an identity map builds is the space's own mass matrix.
-        @test Matrix(PoissonBrackets.weighted_matrix(s, volume_element(pb), (0, 0), (
+        @test Matrix(GeometricBrackets.weighted_matrix(s, volume_element(pb), (0, 0), (
             0, 0))) ≈
               Matrix(mass_matrix(s))
     end

@@ -29,7 +29,7 @@
 #
 # Exact rational arithmetic throughout.
 
-using PoissonBrackets
+using GeometricBrackets
 using Random
 
 include(joinpath(@__DIR__, "check.jl"));

@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh
 using Test
@@ -136,7 +136,7 @@ using Test
     @testset "$(rpad("Miura map",76))" begin
         s = SplineSpace(UniformMesh(64, 2π), 3)
         v̂ = project(s, x -> 1.0 + 0.3sin(x))
-        û = PoissonBrackets.miura_map(s, v̂)
+        û = GeometricBrackets.miura_map(s, v̂)
         xs = collect(range(0, 2π, length = 101))
         exact = [-((1 + 0.3sin(x))^2 + 0.3cos(x)) for x in xs]
         @test maximum(abs, evaluate(s, û, xs) .- exact) < 1e-6

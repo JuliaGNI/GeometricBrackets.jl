@@ -20,7 +20,7 @@
 # Observed orders run from 7.2 to 8.1, so the 8th-order stencil is behaving and the identities
 # hold.  Rows 1 and 2 are pointwise, the remaining four are integrated.
 
-using PoissonBrackets
+using GeometricBrackets
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))

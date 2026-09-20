@@ -76,7 +76,7 @@ Returns a `0`-column matrix when `A` has trivial kernel.
 # Examples
 
 ```jldoctest
-julia> using PoissonBrackets
+julia> using GeometricBrackets
 
 julia> kernel(Rational{Int}[1 2 3; 2 4 6])
 3×2 Matrix{Rational{Int64}}:

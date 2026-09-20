@@ -18,7 +18,7 @@
 #       the excited mode content -- which is why a test on sin x alone reports round-off;
 #   6.  projecting onto both level sets buys all three invariants and costs the structure.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

@@ -20,7 +20,7 @@
 # The index convention matches the package throughout: `C[m,i,j]` is c_ij^m, which is what
 # `structure_constant_residual` and `jacobi_residual` already expect.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh

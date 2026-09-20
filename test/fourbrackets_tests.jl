@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using Test
 
 @testset "$(rpad("Four-Bracket Tests",80))" begin

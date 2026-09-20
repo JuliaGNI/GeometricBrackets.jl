@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh, MassOperator
 using SparseArrays
@@ -148,7 +148,7 @@ const SPLINE_MESHES = ((:uniform, n -> UniformMesh(n, 2π)),
         # a C⁰ basis has a jump in φ' exactly at the nodes; averaging is the only choice
         # that leaves the resulting coefficients antisymmetric
         s = LagrangeSpace(2, 13)
-        E = PoissonBrackets.nodal_derivative_matrix(s)
+        E = GeometricBrackets.nodal_derivative_matrix(s)
         @test size(E) == (nbasis(s), nbasis(s))
         # E differentiates a periodic field: f'(x_m) = Σ_q f_q φ_q'(x_m) = Σ_q f[q] E[q,m].
         # A linear test function would be the wrong probe here -- it is not periodic, and

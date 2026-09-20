@@ -33,11 +33,11 @@
 # Sections 1-4 need SymPy. Section 5 does not: so(N) and its structure constants are exact
 # rational arithmetic, which `so_n` in the package already does, so the CAS is dropped there.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using SymPyPythonCall
 
-# `integrate` is exported by both PoissonBrackets (trajectory integration, via
+# `integrate` is exported by both GeometricBrackets (trajectory integration, via
 # GeometricBase) and SymPy (the symbolic one). Any script using both has to qualify it;
 # below it is always `sympy.integrate`.
 

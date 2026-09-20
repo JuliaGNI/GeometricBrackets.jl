@@ -34,7 +34,7 @@
 # EXPLORATORY AND SLOW, and deliberately not part of run_all.jl. Only B1a needs SymPy; B1b
 # and B3 are exact rational arithmetic and B1c and B2 are floating-point optimisation.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Dirac reduction
@@ -64,7 +64,7 @@ too, unless ``[\mathbb{J},\mathbb{J}]`` happens to land in ``\ker P^{\otimes 3}`
 of dimension ``\dim V_2``.
 
 ```@example dirac
-using PoissonBrackets
+using GeometricBrackets
 
 w = witt_truncation(2)                          # |k| ≤ 2 coarse, 2 < |k| ≤ 4 constrained
 u = zeros(Rational{BigInt}, size(w.C, 1))
@@ -214,13 +214,13 @@ version it replaces, and it is now a regression test in `test/dirac_tests.jl`. S
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["dirac.jl"]
 ```
 
 ### The broken hierarchical space
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["hierarchical.jl"]
 ```

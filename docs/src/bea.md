@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Backward error analysis

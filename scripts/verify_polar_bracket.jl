@@ -22,7 +22,7 @@
 using LinearAlgebra
 using Printf
 using Random
-using PoissonBrackets
+using GeometricBrackets
 using SimpleSplines: (..)
 
 Random.seed!(20260917)
@@ -197,7 +197,7 @@ record("CONTROL a sign-changing mobility breaks positivity",
 # form, which is why the mesh here is small.
 function double_sum(b, û; kernel)
     s = b.space
-    st = PoissonBrackets._collision_state(b, û)
+    st = GeometricBrackets._collision_state(b, û)
     P = (Matrix(basis_values(s, (1, 0))), Matrix(basis_values(s, (0, 1))))
     # `st.c = M μ` is the weight. `st.γ` is the recentred **perped** gradient, so the
     # *unperped* one is (γ₂, −γ₁); recentring subtracts a constant and only differences appear

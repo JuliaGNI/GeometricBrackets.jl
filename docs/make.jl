@@ -1,18 +1,18 @@
-using PoissonBrackets
+using GeometricBrackets
 using Documenter
 
-DocMeta.setdocmeta!(PoissonBrackets, :DocTestSetup,
-    :(using PoissonBrackets); recursive = true)
+DocMeta.setdocmeta!(GeometricBrackets, :DocTestSetup,
+    :(using GeometricBrackets); recursive = true)
 
 makedocs(;
-    modules = [PoissonBrackets],
+    modules = [GeometricBrackets],
     authors = "Michael Kraus",
-    repo = Remotes.GitHub("JuliaGNI", "PoissonBrackets.jl"),
-    sitename = "PoissonBrackets.jl",
+    repo = Remotes.GitHub("JuliaGNI", "GeometricBrackets.jl"),
+    sitename = "GeometricBrackets.jl",
     checkdocs = :exports,
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://JuliaGNI.github.io/PoissonBrackets.jl",
+        canonical = "https://JuliaGNI.github.io/GeometricBrackets.jl",
         # set explicitly: without a configured remote, Documenter cannot read the branch
         # from `git remote` and would default to "master"
         edit_link = "main",
@@ -43,7 +43,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/JuliaGNI/PoissonBrackets.jl",
+    repo = "github.com/JuliaGNI/GeometricBrackets.jl",
     devurl = "latest",
     devbranch = "main"
 )

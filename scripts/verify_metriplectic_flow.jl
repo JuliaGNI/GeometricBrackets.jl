@@ -35,7 +35,7 @@
 #
 
 using LinearAlgebra
-using PoissonBrackets
+using GeometricBrackets
 using Printf
 using Random
 using SimpleSplines: UniformMesh, GradedMesh
@@ -88,7 +88,7 @@ end
 # contracted with the vector field the flow reports.
 function rates(f, û)
     (dot(gradient(f, û), vectorfield(f, û)),
-        dot(PoissonBrackets.entropy_gradient(f, û), vectorfield(f, û)))
+        dot(GeometricBrackets.entropy_gradient(f, û), vectorfield(f, û)))
 end
 
 function finite_difference_jacobian(f, û, ε)
@@ -162,8 +162,8 @@ let rng = MersenneTwister(SEED)
             û = 0.3 .* randn(rng, nbasis(q.space))
             ph = poisson_apply(kdv_bracket_1(q.space), û, gradient(g, û))
             w = max(w,
-                abs(dot(PoissonBrackets.entropy_gradient(g, û), ph)) /
-                (maximum(abs, PoissonBrackets.entropy_gradient(g, û)) *
+                abs(dot(GeometricBrackets.entropy_gradient(g, û), ph)) /
+                (maximum(abs, GeometricBrackets.entropy_gradient(g, û)) *
                  maximum(abs, ph) * nbasis(q.space)))
         end
         return w

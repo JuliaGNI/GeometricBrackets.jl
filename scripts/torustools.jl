@@ -16,7 +16,7 @@
 
 module TorusTools
 
-using PoissonBrackets
+using GeometricBrackets
 
 export Au, Bu, Cu, Du, chi, uu
 export SPECTRAL_N, COARSE_N, FINE_N, REFINEMENT_RESOLUTIONS

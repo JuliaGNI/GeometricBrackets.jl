@@ -23,7 +23,7 @@
 # The chart machinery comes from the package -- `miura_map`, `miura_invert`, `hill_lambda0`,
 # `miura_lambda` and `kdv_miura_bracket` are what `test/miura_tests.jl` exercises.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

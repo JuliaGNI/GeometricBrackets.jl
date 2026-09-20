@@ -22,7 +22,7 @@
 
 using LinearAlgebra
 using Printf
-using PoissonBrackets
+using GeometricBrackets
 # By name rather than a bare `using`: `stiffness_matrix`, `weighted_matrix` and
 # `derivative_matrix` are each a different generic in the two packages, and a bare `using`
 # makes all three ambiguous.
@@ -123,7 +123,7 @@ println("  passes: ", laplace_pass)
 # CONTROL 1 — the plain parameter-square stiffness, with no pullback at all. It is the
 # operator ∫ ∂_r u ∂_r v + ∂_θ u ∂_θ v dr dθ, which is not the Laplacian on the annulus.
 #
-plain = dot(v̂, PoissonBrackets.stiffness_matrix(s) * û)
+plain = dot(v̂, GeometricBrackets.stiffness_matrix(s) * û)
 @printf("  CONTROL plain stiffness, no pullback            = %.8e   relative %.3f\n",
     plain, abs(plain - rhs) / abs(rhs))
 
@@ -157,7 +157,8 @@ function residuals(ncells)
     (
         pullback = abs(dot(b, tensor_weighted_matrix(sr, metric(p)) * a) - exact) /
                    abs(exact),
-        plain = abs(dot(b, PoissonBrackets.stiffness_matrix(sr) * a) - exact) / abs(exact),
+        plain = abs(dot(b, GeometricBrackets.stiffness_matrix(sr) * a) - exact) /
+                abs(exact),
         dropped = abs(dot(b, tensor_weighted_matrix(sr, 𝔹) * a) - exact) / abs(exact))
 end
 

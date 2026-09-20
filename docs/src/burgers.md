@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Burgers
@@ -80,7 +80,7 @@ on ``[0, 2\pi)`` with ``P_1`` elements on 25 cells or ``P_2`` on 13 — both giv
 ``N``.
 
 ```@example burgers
-using PoissonBrackets
+using GeometricBrackets
 sys = BurgersSystem(2, 13)                     # N = 26 ... even, see the trap above
 u₀ = [2 + sin(x) + 0.3cos(2x) for x in nodes(sys.space)]
 traj = integrate(sys, Integrator(sys.flow, ImplicitMidpoint(), 1e-3), u₀, 200; stride = 20)
@@ -94,6 +94,6 @@ step size. See [`to_sqrt_variables`](@ref).
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["equations/burgers.jl"]
 ```

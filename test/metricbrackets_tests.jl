@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh, Dirichlet
@@ -11,7 +11,7 @@ struct MinimalMetricBracket{T} <: MetricBracket{T}
     G::Matrix{T}
 end
 
-PoissonBrackets.metric_matrix(b::MinimalMetricBracket, û::AbstractVector) = b.G
+GeometricBrackets.metric_matrix(b::MinimalMetricBracket, û::AbstractVector) = b.G
 
 # The central-difference Jacobian of `metric_matrix`, as the tensor `dG[m,i,j]`.
 function finite_difference_derivative(b::MetricBracket, û::AbstractVector, ε::Real)
@@ -79,8 +79,8 @@ end
         # the control: the same variable field in a coefficient that is NOT symmetric gives
         # a matrix that is not either, so the number above measures X_h ⊗ X_h and not the
         # assembly quietly symmetrising
-        X = PoissonBrackets.hamiltonian_field(s, ĥ)
-        𝔻 = PoissonBrackets._outer(X, X)
+        X = GeometricBrackets.hamiltonian_field(s, ĥ)
+        𝔻 = GeometricBrackets._outer(X, X)
         𝔻[1, 2] = zeros(length(𝔻[1, 2]))
         A = tensor_weighted_matrix(s, 𝔻)
         @test maximum(abs, A - A') > 0.1 * maximum(abs, A)
@@ -102,8 +102,8 @@ end
 
         # the control that must fail: X_h ⊗ X_h is a Gram matrix and cannot be indefinite,
         # so the coefficient has to be broken by hand — flipping one diagonal component
-        X = PoissonBrackets.hamiltonian_field(s, ĥ)
-        𝔻 = PoissonBrackets._outer(X, X)
+        X = GeometricBrackets.hamiltonian_field(s, ĥ)
+        𝔻 = GeometricBrackets._outer(X, X)
         𝔻[1, 1] = -𝔻[1, 1]
         A = tensor_weighted_matrix(s, 𝔻)
         @test minimum(eigvals(Symmetric(Matrix(A)))) < -1e-3
@@ -128,7 +128,7 @@ end
         # ⊥ and use ∇h ⊗ ∇h. It is still symmetric and still positive semi-definite —
         # a Gram matrix is a Gram matrix — and only the degeneracy notices.
         g = (field(s, ĥ, (1, 0)), field(s, ĥ, (0, 1)))
-        A = tensor_weighted_matrix(s, PoissonBrackets._outer(g, g))
+        A = tensor_weighted_matrix(s, GeometricBrackets._outer(g, g))
         @test maximum(abs, A - A') < 1e-14 * maximum(abs, A)
         @test minimum(eigvals(Symmetric(Matrix(A)))) > -1e-12 * maximum(abs, A)
         @test maximum(abs, A * ĥ) > 0.1 * maximum(abs, A) * maximum(abs, ĥ)

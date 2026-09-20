@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh, RandomMesh
 using Test
@@ -41,7 +41,7 @@ using Test
         v̂ = project(s, miura_initial_v(2π))
         b = kdv_miura_bracket(s, v̂)
         û = miura_map(s, v̂)
-        dP = PoissonBrackets.poisson_derivative(b, û)
+        dP = GeometricBrackets.poisson_derivative(b, û)
         L = miura_derivative(s, v̂)
         h = 1e-6
         for m in (1, 5, 11)

@@ -27,7 +27,7 @@
 # `exp` here is `LinearAlgebra.exp`, where the Python carried a hand-rolled scaling-and-
 # squaring `expm` to avoid a scipy dependency.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

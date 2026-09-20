@@ -47,7 +47,7 @@
 using LinearAlgebra
 using Printf
 using Random
-using PoissonBrackets
+using GeometricBrackets
 # By name rather than a bare `using`: `stiffness_matrix`, `weighted_matrix` and
 # `derivative_matrix` are each a different generic in the two packages.
 using SimpleSplines: UniformMesh, Dirichlet, Periodic, (..)
@@ -272,7 +272,7 @@ let
     # The mobility is sampled at the physical points, not the parameter ones. The reference
     # above already depends on this, so it is stated separately rather than left implicit.
     bx = CollisionBracket(s, φ̂, pb; mobility = (x, u) -> x[1], mobility_derivative = 0)
-    sampled = PoissonBrackets._collision_state(bx, û).M
+    sampled = GeometricBrackets._collision_state(bx, û).M
     @printf("    mobility sampled at F(x̂), not at x̂             %.3e   (parameter %.3e)\n",
         maximum(abs, sampled .- [x[1] for x in nodes(pb)]),
         maximum(abs, sampled .- [x[1] for x in quadrature_nodes(s)]))

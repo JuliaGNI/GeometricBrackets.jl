@@ -24,7 +24,7 @@
 # `burgers_casimir` are the same objects the test suite exercises, so this script diagnoses
 # what the package actually ships rather than a copy of it.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 

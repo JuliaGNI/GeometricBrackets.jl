@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Discretisation
@@ -116,7 +116,7 @@ that no choice of quadrature and no regrouping of the integrand can deliver. The
 [`jacobi_residual`](@ref) is of order one and *flat* under refinement:
 
 ```@example jac
-using PoissonBrackets, Random
+using GeometricBrackets, Random
 Random.seed!(1)
 [jacobi_residual(kdv_bracket_2(SplineSpace(N, 3)), randn(N)) for N in (12, 16, 20, 24)]
 ```

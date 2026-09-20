@@ -26,7 +26,7 @@
 # where the Python prototype used c[i][j][m]. The leading index is what lets C[m,:,:] be a
 # matrix, and it is what `structure_constant_residual` already expected.
 
-using PoissonBrackets
+using GeometricBrackets
 using Random
 
 include(joinpath(@__DIR__, "check.jl"));

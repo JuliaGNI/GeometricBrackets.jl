@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh
@@ -78,7 +78,7 @@ using Test
         v = randn(N)
         h = 1e-6
         for b in (kdv_bracket_1(s), kdv_bracket_2(s))
-            D = PoissonBrackets.bracket_directional(b, û, v)
+            D = GeometricBrackets.bracket_directional(b, û, v)
             for m in (1, 5, 11)
                 e = zeros(N)
                 e[m] = h
@@ -96,13 +96,13 @@ using Test
         u = 1 .+ rand(N)
 
         # the theorem: K constant, g a function of the single variable u_i
-        b = PoissonBrackets.GaugedBracket(K, sqrt, u -> 1 / (2sqrt(u)))
+        b = GeometricBrackets.GaugedBracket(K, sqrt, u -> 1 / (2sqrt(u)))
         @test maximum(abs, poisson_matrix(b, u) + poisson_matrix(b, u)') < 1e-14
         @test jacobi_residual(b, u) < 1e-12
 
         # it holds for gauges other than the square root, too
         for (g, dg) in ((exp, exp), (u -> u^2, u -> 2u), (log, u -> 1/u))
-            bb = PoissonBrackets.GaugedBracket(K, g, dg)
+            bb = GeometricBrackets.GaugedBracket(K, g, dg)
             @test jacobi_residual(bb, u) < 1e-10
         end
 
@@ -192,7 +192,7 @@ using Test
             # sandwiched P is dense for both, since M⁻¹ is dense whatever sits between.
             M = mass_matrix(s)
             bg = kdv_bracket_2(s)
-            Kg = M * poisson_matrix(bg, PoissonBrackets.miura_map(s, v̂)) * M
+            Kg = M * poisson_matrix(bg, GeometricBrackets.miura_map(s, v̂)) * M
             Km = M * P * M
             frac(A) = count(x -> abs(x) > 1e-8 * maximum(abs, A), A) / length(A)
             @test frac(Km) > 0.8      # dense
@@ -201,10 +201,10 @@ using Test
     end
 
     @testset "$(rpad("argument checks",76))" begin
-        @test_throws ArgumentError PoissonBrackets.ConstantBracket(randn(3, 4))
-        @test_throws ArgumentError PoissonBrackets.GaugedBracket(randn(3, 4), sqrt, sqrt)
+        @test_throws ArgumentError GeometricBrackets.ConstantBracket(randn(3, 4))
+        @test_throws ArgumentError GeometricBrackets.GaugedBracket(randn(3, 4), sqrt, sqrt)
         s = SplineSpace(12, 3)
-        @test_throws DimensionMismatch PoissonBrackets.AffineBracket(
+        @test_throws DimensionMismatch GeometricBrackets.AffineBracket(
             s, 2, randn(3, 3), zeros(12, 12))
     end
 end

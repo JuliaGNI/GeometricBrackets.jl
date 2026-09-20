@@ -59,7 +59,7 @@
 # docstring already warns about for Jacobi controls, in a second guise: a control that fails for
 # a reason that does not generalise is no better than one that cannot fail.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

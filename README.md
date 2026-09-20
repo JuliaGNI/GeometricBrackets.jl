@@ -1,10 +1,10 @@
-# PoissonBrackets
+# GeometricBrackets
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaGNI.github.io/PoissonBrackets.jl/stable/)
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://JuliaGNI.github.io/PoissonBrackets.jl/latest/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaGNI.github.io/GeometricBrackets.jl/stable/)
+[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://JuliaGNI.github.io/GeometricBrackets.jl/latest/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
-[![Build Status](https://github.com/JuliaGNI/PoissonBrackets.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaGNI/PoissonBrackets.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/JuliaGNI/PoissonBrackets.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaGNI/PoissonBrackets.jl)
+[![Build Status](https://github.com/JuliaGNI/GeometricBrackets.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaGNI/GeometricBrackets.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/JuliaGNI/GeometricBrackets.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaGNI/GeometricBrackets.jl)
 
 Structure-preserving discretisations of the Poisson brackets of one-dimensional Hamiltonian
 partial differential equations, with the discrete brackets, Hamiltonians, Casimirs and
@@ -43,7 +43,7 @@ slots:
 | four-brackets | the Gardner and symmetric families with their weighted variants, both reductions to `∫u[A_u,B_u]` — reached exactly, not asymptotically — the Plücker relation that collapses the Jacobi obstruction, and the two antisymmetry conditions that each family satisfies exactly one of |
 | metriplectic | the Kulkarni-Nomizu product and the positivity of the two-bracket it induces |
 
-The [documentation](https://JuliaGNI.github.io/PoissonBrackets.jl/latest/) carries the theory:
+The [documentation](https://JuliaGNI.github.io/GeometricBrackets.jl/latest/) carries the theory:
 what each diagnostic measures, the backward error analysis of the implicit midpoint rule, the
 singularity of the log-entropy weight, and the no-go results for aliasing and for antisymmetric
 three-brackets.

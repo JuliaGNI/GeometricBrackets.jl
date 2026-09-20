@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh, RandomMesh
@@ -30,13 +30,13 @@ end
         @test hamiltonian(H, s, û) ≈ dot(û, mass_matrix(s), û) / 2
         @test gradient(H, s, û) ≈ mass_matrix(s) * û
         @test hessian(H, s, û) ≈ mass_matrix(s)
-        @test PoissonBrackets.value(H, s, û) == hamiltonian(H, s, û)
-        @test_throws ArgumentError PoissonBrackets.QuadraticHamiltonian(randn(3, 3))
+        @test GeometricBrackets.value(H, s, û) == hamiltonian(H, s, û)
+        @test_throws ArgumentError GeometricBrackets.QuadraticHamiltonian(randn(3, 3))
     end
 
     @testset "$(rpad("mass Casimir is linear",76))" begin
         for s in (SplineSpace(12, 3), LagrangeSpace(2, 7))
-            C = PoissonBrackets.MassCasimir(s)
+            C = GeometricBrackets.MassCasimir(s)
             N = nbasis(s)
             û = randn(N)
             @test hamiltonian(C, s, û) ≈ dot(basis_integrals(s), û)
@@ -54,7 +54,7 @@ end
 
             s = SplineSpace(mk(12), p)
             û = 0.3 .* randn(12)
-            for H in (KdVHamiltonian1(), KdVHamiltonian2(s), PoissonBrackets.MassCasimir(s))
+            for H in (KdVHamiltonian1(), KdVHamiltonian2(s), GeometricBrackets.MassCasimir(s))
                 g = gradient(H, s, û)
                 @test g ≈ fd_gradient(H, s, û) atol = 1e-6 * max(1, maximum(abs, g))
             end

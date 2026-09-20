@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Random
 using SimpleSplines: UniformMesh
@@ -12,9 +12,9 @@ struct NegativeMetricBracket{T} <: MetricBracket{T}
     G::Matrix{T}
 end
 
-PoissonBrackets.metric_matrix(b::NegativeMetricBracket, û::AbstractVector) = b.G
+GeometricBrackets.metric_matrix(b::NegativeMetricBracket, û::AbstractVector) = b.G
 
-function PoissonBrackets.metric_derivative(b::NegativeMetricBracket{T},
+function GeometricBrackets.metric_derivative(b::NegativeMetricBracket{T},
         û::AbstractVector) where {T}
     N = length(û)
     zeros(T, N, N, N)
@@ -73,20 +73,20 @@ end
         @test eltype(f) == Float64
         @test length(f) == nbasis(s)
         @test f.bracket === nothing                 # the four-argument form drops it
-        @test PoissonBrackets.metric(f) === b
-        @test PoissonBrackets.entropy(f) === S
-        @test PoissonBrackets.hamiltonian(f) === H
+        @test GeometricBrackets.metric(f) === b
+        @test GeometricBrackets.entropy(f) === S
+        @test GeometricBrackets.hamiltonian(f) === H
 
         # the generalisation is what lets a metriplectic field reach the integrators at all
         @test HamiltonianFlow(s, kdv_bracket_1(s), H) isa AbstractFlow{Float64}
         @test MetriplecticFlow(s, kdv_bracket_1(s), b, H, S) isa AbstractFlow{Float64}
 
         û = 0.3 .* randn(rng, nbasis(s))
-        @test PoissonBrackets.entropy(f, û) ≈ hamiltonian(S, s, û)
-        @test PoissonBrackets.entropy_gradient(f, û) ≈ gradient(S, s, û)
-        @test PoissonBrackets.entropy_hessian(f, û) ≈ hessian(S, s, û)
+        @test GeometricBrackets.entropy(f, û) ≈ hamiltonian(S, s, û)
+        @test GeometricBrackets.entropy_gradient(f, û) ≈ gradient(S, s, û)
+        @test GeometricBrackets.entropy_hessian(f, û) ≈ hessian(S, s, û)
         # the Hamiltonian half keeps the names the integrators call
-        @test PoissonBrackets.hamiltonian(f, û) ≈ hamiltonian(H, s, û)
+        @test GeometricBrackets.hamiltonian(f, û) ≈ hamiltonian(H, s, û)
         @test gradient(f, û) ≈ gradient(H, s, û)
     end
 
@@ -309,7 +309,7 @@ end
 
         # `space` is the third method of the interface: `Integrator` needs it before any
         # vector field is evaluated. Unqualified, because a method a downstream flow is
-        # required to define has to be reachable through `using PoissonBrackets`
+        # required to define has to be reachable through `using GeometricBrackets`
         @test space(f) === s
         @test nbasis(space(f)) == length(f)
 

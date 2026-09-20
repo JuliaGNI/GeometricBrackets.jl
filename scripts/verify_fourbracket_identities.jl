@@ -35,7 +35,7 @@
 # log u or a quotient A_u/S_u are settled by refinement, since Fourier differentiation is not
 # exact for those.  `verify_fourbracket_convergence.jl` measures the orders behind that.
 
-using PoissonBrackets
+using GeometricBrackets
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))

@@ -29,7 +29,7 @@
 #   4. Feeding the sine structure constants into the four-bracket of Theorem 5.7 reproduces
 #      the Zeitlin bracket and satisfies the Jacobi identity.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

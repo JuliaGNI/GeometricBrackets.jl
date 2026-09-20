@@ -25,7 +25,7 @@
 # Finite-dimensional and unlike the rest of the manuscript's material: no grid, no fields.
 # Both seeds are fixed, so a failure is reproducible.
 
-using PoissonBrackets
+using GeometricBrackets
 using Printf
 using Random
 

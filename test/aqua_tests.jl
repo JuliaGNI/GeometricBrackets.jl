@@ -1,5 +1,5 @@
 using Aqua
-using PoissonBrackets
+using GeometricBrackets
 using Test
 
 # Package-level quality assurance: type piracy, method ambiguities, stale and duplicated
@@ -11,4 +11,4 @@ using Test
 # generics rather than defining its own, which is what keeps `using` both packages unambiguous,
 # and every such method is piracy unless it dispatches on a type defined here. Aqua is what holds
 # that line as methods are added to the shared generics.
-Aqua.test_all(PoissonBrackets)
+Aqua.test_all(GeometricBrackets)

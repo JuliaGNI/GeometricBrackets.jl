@@ -1,9 +1,9 @@
-module PoissonBracketsMakieExt
+module GeometricBracketsMakieExt
 
 using CairoMakie
 using Printf
-using PoissonBrackets
-using PoissonBrackets: ERROR_FLOOR, FLOW_STYLES, INTEGRATOR_COLORS
+using GeometricBrackets
+using GeometricBrackets: ERROR_FLOOR, FLOW_STYLES, INTEGRATOR_COLORS
 
 """
     _series_style(label)
@@ -30,7 +30,7 @@ end
 
 _clamped(v) = max.(v, ERROR_FLOOR)
 
-function PoissonBrackets.energyplot(trajs, labels;
+function GeometricBrackets.energyplot(trajs, labels;
         name::Symbol = :H1,
         title = "",
         ylabel = nothing,
@@ -66,7 +66,7 @@ function PoissonBrackets.energyplot(trajs, labels;
     fig
 end
 
-function PoissonBrackets.stateplot(system, states, labels;
+function GeometricBrackets.stateplot(system, states, labels;
         npoints = 601,
         title = "",
         xleft = 0.0,
@@ -114,7 +114,7 @@ orders of magnitude apart and a shared axis flatters whichever is worst. This me
 for the manuscript's own figure layout, which puts H1, H2 and C0 side by side, and each panel
 keeps its own y axis.
 """
-function PoissonBrackets.energyplot(trajs, labels, names;
+function GeometricBrackets.energyplot(trajs, labels, names;
         title = "",
         size = (300 * length(names) + 160, 380),
         resolution = nothing)
@@ -155,7 +155,7 @@ function _order(xs, ys)
     sum((lx .- x̄) .* (ly .- ȳ)) / sum((lx .- x̄) .^ 2)
 end
 
-function PoissonBrackets.sweepplot(dts, series;
+function GeometricBrackets.sweepplot(dts, series;
         title = "",
         xlabel = "Δt",
         size = (620, 520),
@@ -199,7 +199,7 @@ function PoissonBrackets.sweepplot(dts, series;
     fig
 end
 
-function PoissonBrackets.convergenceplot(xs, series;
+function GeometricBrackets.convergenceplot(xs, series;
         title = "",
         xlabel = "N",
         ylabel = "error",

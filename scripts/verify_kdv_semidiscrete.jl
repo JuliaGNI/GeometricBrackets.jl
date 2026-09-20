@@ -23,7 +23,7 @@
 # Beware the broadcast orientation throughout: Φ is (nb × nq) and the weights are (nq,), so
 # numpy's `W * P[d]` -- which scales the QUADRATURE axis -- is `Φ .* transpose(W)` here.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

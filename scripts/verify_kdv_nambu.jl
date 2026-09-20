@@ -32,7 +32,7 @@
 #
 # Needs SymPy.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

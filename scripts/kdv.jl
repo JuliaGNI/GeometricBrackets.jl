@@ -25,7 +25,7 @@
 # the solitons are elevations of positive mass -- has a preimage at all.
 
 using CairoMakie
-using PoissonBrackets
+using GeometricBrackets
 
 """
 Where the figures go. Defaults to `scripts/figures/`; `--outdir=PATH` redirects it, which is
@@ -310,8 +310,8 @@ function run_case(case::Case)
         end
     end
 
-    dt_rk4 = RK4_SAFETY * min(PoissonBrackets.stability_limit(sys.flow1, u0),
-        PoissonBrackets.stability_limit(sys.flow2, u0))
+    dt_rk4 = RK4_SAFETY * min(GeometricBrackets.stability_limit(sys.flow1, u0),
+        GeometricBrackets.stability_limit(sys.flow2, u0))
 
     trajs, labels, finals = Trajectory[], String[], Vector{Float64}[]
     rows = RunSummary[]

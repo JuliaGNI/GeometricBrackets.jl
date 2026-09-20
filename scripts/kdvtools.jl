@@ -14,7 +14,7 @@
 
 module KdVTools
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh
@@ -305,9 +305,9 @@ end
 
 Maximum relative deviation of an envelope from its reference value.
 
-Named apart from `PoissonBrackets.drift`, which takes a `Trajectory` and an invariant
+Named apart from `GeometricBrackets.drift`, which takes a `Trajectory` and an invariant
 name; a bare `drift` exported from here would be ambiguous with it. Same for
-`env_growth` against `PoissonBrackets.growth`.
+`env_growth` against `GeometricBrackets.growth`.
 """
 env_drift(env, ref) = maximum(env) / max(abs(ref), 1e-30)
 

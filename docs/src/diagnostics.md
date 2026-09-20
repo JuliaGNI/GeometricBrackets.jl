@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Diagnostics
@@ -60,7 +60,7 @@ by the largest term actually formed is neither, and it is what makes the number 
 across resolutions.
 
 ```@example diag
-using PoissonBrackets, Random
+using GeometricBrackets, Random
 Random.seed!(1)
 
 s = SplineSpace(16, 3)
@@ -395,6 +395,6 @@ sweep; both take `--outdir=PATH`. See [The verification scripts](@ref).
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["diagnostics.jl"]
 ```

@@ -273,7 +273,7 @@ Plot the error of **one** invariant against time, and the initial and final stat
 Defined in a package extension: load `CairoMakie` to make them available.
 
 ```julia
-using PoissonBrackets, CairoMakie
+using GeometricBrackets, CairoMakie
 fig = energyplot(trajs, labels; name = :H2)
 ```
 

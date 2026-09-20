@@ -16,7 +16,7 @@
 #
 # The numbers are the ones `verify_kdv_bea.jl` section 6 checks; this script only draws them.
 
-using PoissonBrackets
+using GeometricBrackets
 using CairoMakie
 using Printf
 

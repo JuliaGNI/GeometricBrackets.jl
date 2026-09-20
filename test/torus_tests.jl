@@ -1,5 +1,5 @@
 using LinearAlgebra
-using PoissonBrackets
+using GeometricBrackets
 using Test
 
 @testset "$(rpad("Torus Grid Tests",80))" begin

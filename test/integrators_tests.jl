@@ -1,4 +1,4 @@
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh
 using Test
@@ -35,7 +35,7 @@ using Test
         for m in (Gonzalez(), GonzalezMass())
             x = copy(u0)
             y = u0 .+ 0.05 .* randn(length(u0))
-            ḡ = PoissonBrackets.discrete_gradient(m, sys.flow1, x, y)
+            ḡ = GeometricBrackets.discrete_gradient(m, sys.flow1, x, y)
             ΔH = hamiltonian(sys.flow1, y) - hamiltonian(sys.flow1, x)
             @test dot(ḡ, y .- x) ≈ ΔH atol = 1e-12 * max(1, abs(ΔH))
         end
@@ -47,7 +47,7 @@ using Test
         x = copy(u0)
         y = u0 .+ 0.05 .* randn(length(u0))
         for m in (Gonzalez(), GonzalezMass())
-            ḡ = PoissonBrackets.discrete_gradient(m, sys.flow2, x, y)
+            ḡ = GeometricBrackets.discrete_gradient(m, sys.flow2, x, y)
             @test ḡ ≈ gradient(sys.flow2, (x .+ y) ./ 2) atol = 1e-10
         end
     end
@@ -56,13 +56,13 @@ using Test
         x = copy(u0)
         y = u0 .+ 0.05 .* randn(length(u0))
         for m in (Gonzalez(), GonzalezMass())
-            J = PoissonBrackets.discrete_gradient_jacobian(m, sys.flow1, x, y)
+            J = GeometricBrackets.discrete_gradient_jacobian(m, sys.flow1, x, y)
             h = 1e-6
             for k in (1, 7, 15)
                 e = zeros(length(y))
                 e[k] = h
-                fd = (PoissonBrackets.discrete_gradient(m, sys.flow1, x, y .+ e) .-
-                      PoissonBrackets.discrete_gradient(m, sys.flow1, x, y .- e)) ./ 2h
+                fd = (GeometricBrackets.discrete_gradient(m, sys.flow1, x, y .+ e) .-
+                      GeometricBrackets.discrete_gradient(m, sys.flow1, x, y .- e)) ./ 2h
                 @test J[:, k] ≈ fd atol = 1e-4 * max(1, maximum(abs, fd))
             end
         end
@@ -100,7 +100,7 @@ using Test
     end
 
     @testset "$(rpad("stability limit and explicit stability",76))" begin
-        dtmax = PoissonBrackets.stability_limit(sys.flow1, copy(u0))
+        dtmax = GeometricBrackets.stability_limit(sys.flow1, copy(u0))
         @test dtmax > 0
         # stable at 40% of the limit, unstable at 160%
         for (factor, stable) in ((0.4, true), (1.6, false))
@@ -126,7 +126,8 @@ using Test
         for (N, ref) in ρ_ref
             sN = SplineSpace(N, 3; L = 2π)
             sysN = KdVSystem(sN)
-            r = 2 * sqrt(2) / PoissonBrackets.stability_limit(sysN.flow1, project(sN, sin))
+            r = 2 * sqrt(2) /
+                GeometricBrackets.stability_limit(sysN.flow1, project(sN, sin))
             push!(ρ, r)
             @test isapprox(r, ref; rtol = 5e-3)
         end

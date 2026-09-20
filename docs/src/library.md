@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Library
@@ -22,28 +22,28 @@ too: a bare `"spaces.jl"` also matches `tensorspaces.jl` and `polarspaces.jl`, w
 belong to the two sections below and would otherwise be emitted twice.
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["src/spaces.jl"]
 ```
 
 ## Tensor-product spaces — `tensorspaces.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["tensorspaces.jl"]
 ```
 
 ## Polar spaces — `polarspaces.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["polarspaces.jl"]
 ```
 
 ## Mapped domains — `pullback.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["pullback.jl"]
 ```
 
@@ -55,14 +55,14 @@ a bare `"brackets.jl"` also matches `fourbrackets.jl`, whose docstrings belong t
 section below; both would otherwise be emitted twice.
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["src/brackets.jl"]
 ```
 
 ## Metric brackets — `metricbrackets.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["metricbrackets.jl"]
 ```
 
@@ -72,21 +72,21 @@ No qualification is needed here: no other source file's path ends in `collisionb
 and the filter of the section above does not match it either.
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["collisionbrackets.jl"]
 ```
 
 ## Hamiltonians — `hamiltonians.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["hamiltonians.jl"]
 ```
 
 ## Flows — `flows.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["src/flows.jl"]
 ```
 
@@ -97,20 +97,20 @@ qualified against this one: a bare `"flows.jl"` matches `metriplecticflows.jl` a
 every docstring here would be emitted twice.
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["metriplecticflows.jl"]
 ```
 
 ## Integrators — `integrators.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["integrators.jl"]
 ```
 
 ## The mixed formulation — `mixed.jl`
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["mixed.jl"]
 ```

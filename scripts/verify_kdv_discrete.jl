@@ -22,7 +22,7 @@
 # The brackets come from the package -- `kdv_bracket_1`, `kdv_bracket_2` and
 # `poisson_tensor` are the objects the test suite exercises.
 
-using PoissonBrackets
+using GeometricBrackets
 using LinearAlgebra
 using Printf
 using Random

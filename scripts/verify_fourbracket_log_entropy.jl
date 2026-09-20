@@ -36,7 +36,7 @@
 # prescribed -- see `verify_burgers_entropy_casimir.jl`, which finds the identical critical
 # level u = 1/e from the structure-constant side -- seen here from the four-bracket side.
 
-using PoissonBrackets
+using GeometricBrackets
 using Printf
 
 include(joinpath(@__DIR__, "check.jl"))

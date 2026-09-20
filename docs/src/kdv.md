@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Korteweg-de Vries
@@ -43,7 +43,7 @@ between them is **structural**, not a matter of accuracy: only the first is a ge
 finite-dimensional Poisson system.
 
 ```@example kdv
-using PoissonBrackets
+using GeometricBrackets
 sys = KdVSystem(SplineSpace(64, 3))
 û = project(sys.space, sin)
 maximum(abs, vectorfield(sys.flow1, û) - vectorfield(sys.flow2, û))
@@ -243,6 +243,6 @@ and which no single end-of-run number can show.
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["equations/kdv.jl"]
 ```

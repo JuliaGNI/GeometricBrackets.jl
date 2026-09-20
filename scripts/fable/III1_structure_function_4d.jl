@@ -39,7 +39,7 @@
 #
 # All fields have the mean <.> = (2pi)^{-2n} integral, so no pi appears in the exact part.
 
-using PoissonBrackets
+using GeometricBrackets
 using Random
 using Printf
 

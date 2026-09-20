@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = PoissonBrackets
+CurrentModule = GeometricBrackets
 ```
 
 # Discrete Lie-Poisson brackets
@@ -155,7 +155,7 @@ which closes into ``\mathfrak{su}(N)`` exactly and converges to the torus struct
 ``m \times n`` at order ``N^{-2}``:
 
 ```@example lp
-using PoissonBrackets, Printf
+using GeometricBrackets, Printf
 for N in (11, 41, 161)
     _, c = sine_coefficient(N, (1, 0), (0, 1))
     @printf("N = %3d   c = %.6f   error = %.2e\n", N, c, abs(c - 1))
@@ -254,13 +254,13 @@ and recorded them drifting apart.
 ## Reference
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["algebras.jl"]
 ```
 
 ### Exact linear algebra
 
 ```@autodocs
-Modules = [PoissonBrackets]
+Modules = [GeometricBrackets]
 Pages = ["exact.jl"]
 ```
