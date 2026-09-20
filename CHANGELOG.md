@@ -116,9 +116,11 @@ and every one of those methods is piracy unless it dispatches on a type defined 
 line the behavioural suite is structurally unable to see, and it gets crossed by adding one
 method to a shared generic, which is exactly what this change does three times over.
 
-All eight checks pass on the first run, with no exclusions: method ambiguity, unbound type
-parameters, undefined exports, `Project.toml` against `test/Project.toml`, stale dependencies,
-compat bounds, piracy and persistent tasks. Seven of them can fail. The
+All eight checks `Aqua.test_all` enables by default pass on the first run, and
+`test/aqua_tests.jl` excludes none of them: method ambiguity, unbound type parameters,
+undefined exports, `Project.toml` against `test/Project.toml`, stale dependencies, compat
+bounds, piracy and persistent tasks. Aqua 0.8.18 has a ninth, `undocumented_names`, which
+`test_all` itself defaults to `false`. Seven of the eight can fail. The
 `Project.toml`/`test/Project.toml` comparison exists only to support Julia below 1.2, so a
 `julia = "1.11"` compat returns from it before it compares anything, and this package keeps
 its test dependencies in `[extras]` and `[targets]` rather than in a `test/Project.toml` in
