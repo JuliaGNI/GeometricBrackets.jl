@@ -45,7 +45,7 @@ end
             @test maximum(abs, hessian(C, s, û)) == 0
             # the mass of the discrete field is the integral of the field
             @test hamiltonian(C, s, û) ≈
-                  dot(quadrature_weights(s), PoissonBrackets.field(s, û))
+                  dot(quadrature_weights(s), field(s, û))
         end
     end
 
@@ -82,9 +82,9 @@ end
         g = gradient(KdVHamiltonian1(), s, û)
         w = quadrature_weights(s)
         Φ = basis_values(s, 0)
-        direct = Φ * (w .* (-3 .* PoissonBrackets.field(s, û) .^ 2
-                   .-
-                   PoissonBrackets.field(s, û, 2)))
+        direct = Φ * (w .* (-3 .* field(s, û) .^ 2
+                            .-
+                            field(s, û, 2)))
         @test maximum(abs, g .- direct) < 1e-8 * maximum(abs, g)
     end
 

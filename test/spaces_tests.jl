@@ -131,7 +131,7 @@ const SPLINE_MESHES = ((:uniform, n -> UniformMesh(n, 2π)),
             @test maximum(abs, evaluate(s, û, xs) .- sin.(xs)) < 1e-3
             # projecting a field already in the space returns its own coefficients
             v̂ = randn(nbasis(s))
-            @test project(s, PoissonBrackets.field(s, v̂)) ≈ v̂
+            @test project(s, field(s, v̂)) ≈ v̂
         end
     end
 
