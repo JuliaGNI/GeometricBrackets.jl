@@ -147,6 +147,46 @@ The partial derivatives of the sampled field `f` on the grid `g`.
 @doc (@doc ∂x)
 ∂y(g::TorusGrid, f::AbstractMatrix) = f * transpose(g.D)
 
+@doc raw"""
+    pinv(g::TorusGrid; rtol = sqrt(eps(T)))
+
+The Moore–Penrose pseudoinverse ``D^+`` of the differentiation matrix, as a dense matrix. It
+undoes [`∂x`](@ref) and [`∂y`](@ref) the only way a periodic derivative can be undone:
+``D^+ f`` is the zero-mean field whose ``x``-derivative is `f`, and `f * transpose(pinv(g))`
+does the same in ``y``.
+
+# Why a pseudoinverse and not an inverse
+
+``D`` is singular. A constant has zero derivative on a periodic domain, so ``\mathbf{1}`` is
+in the null space of both schemes, and at even `N` the Nyquist mode is too — for
+[`spectral_grid`](@ref) because its `D` carries no Nyquist component by construction, and for
+[`finite_difference_grid`](@ref) because every centred stencil has symbol
+``2i \sum_k c_k \sin(k\theta) / h``, which vanishes at ``\theta = \pi``. So `D` has rank
+``N - 2`` at even `N`, and `D * pinv(g)` is the projector onto the complement of those two
+modes rather than the identity.
+
+# How it is built
+
+Both `D` are circulant, so ``D = V \Lambda W`` in the DFT matrices [`spectral_grid`](@ref)
+already assembles, and the pseudoinverse inverts the eigenvalues it can:
+``D^+ = V \Lambda^+ W`` with ``\lambda^+ = \lambda^{-1}`` where ``|\lambda| > `` `rtol` times
+the largest, and zero elsewhere. Only the first column of `D` is needed to get ``\Lambda``,
+which makes this ``O(N^2)`` rather than the ``O(N^3)`` of a general `pinv`.
+
+The result is dense even for the sparse finite-difference `D`. That is not a loss: recovering
+a field from its derivative is a global operation, and no banded matrix performs it.
+"""
+function pinv(g::TorusGrid{T}; rtol = sqrt(eps(T))) where {T}
+    c = Vector{T}(g.D[:, 1])
+    W = [cis(-p * g.nodes[i]) / g.N for p in 0:(g.N - 1), i in 1:g.N]
+    V = [cis(p * g.nodes[i]) for i in 1:g.N, p in 0:(g.N - 1)]
+    λ = g.N .* (W * c)
+    tol = rtol * maximum(abs, λ)
+    λ⁺ = [abs(l) > tol ? inv(l) : zero(l) for l in λ]
+    c⁺ = real.(V * λ⁺ ./ g.N)
+    return [c⁺[mod(i - j, g.N) + 1] for i in 1:g.N, j in 1:g.N]
+end
+
 """
     sample(g, fun)
 

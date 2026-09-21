@@ -14,7 +14,7 @@ import Sparspak
 # extended rather than defined here, so that the packages of the ecosystem share one
 # generic function per accessor
 import GeometricBase: integrate, value
-import LinearAlgebra: issymmetric
+import LinearAlgebra: issymmetric, pinv
 import SimpleSplines: basis, basis_integrals, basis_values, degree, derivative_matrix,
                       domainlength, evaluate, mass_factorization, mass_matrix,
                       mass_operator, mass_solve!, mixed_matrix, nbasis,

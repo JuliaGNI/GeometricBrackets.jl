@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
 because the KdV sign convention below changes what every number in the package means.
 
+### Added — `pinv` inverts the torus derivative on the modes that have one
+
+`pinv(g::TorusGrid)` returns the Moore–Penrose pseudoinverse of the grid's differentiation
+matrix. `pinv(g) * f` is the zero-mean field whose `∂x` is `f`, and `f * transpose(pinv(g))` does
+the same in `y`, mirroring how `∂y` mirrors `∂x`. Both schemes are served by the one method.
+
+`D` is singular, and by two modes rather than one. A constant has no derivative on a periodic
+domain, and at even `N` neither does the Nyquist mode: `spectral_grid`'s `D` carries no Nyquist
+component by construction, and every centred stencil has symbol `2i Σ c_k sin(kθ) / h`, which
+vanishes at `θ = π`. So `D` has rank `N - 2`, `D⁺D` is the projector onto the complement of those
+two modes, and a field with a constant-in-`x` part comes back without it. That is what "pseudo"
+costs here, and it is the only thing it costs.
+
+It is built from the circulant structure rather than by an SVD. Only the first column of `D` is
+needed to recover the eigenvalues, so the cost is `O(N²)` rather than the `O(N³)` of a general
+`pinv`. The result is dense even for the sparse finite-difference `D`, which is not a loss:
+recovering a field from its derivative is global, and no banded matrix performs it.
+
+Checked against `LinearAlgebra.pinv` of the dense matrix to 1e-12, and against all four
+Moore–Penrose conditions, for both schemes.
+
 ### Changed — the package is renamed to GeometricBrackets
 
 `PoissonBrackets` becomes `GeometricBrackets`, and the repository becomes
