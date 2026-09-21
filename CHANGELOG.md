@@ -5,10 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] — 2026-09-21
 
-`0.1.0` has not shipped, so all of this may be folded into it; it is kept separate
-because the KdV sign convention below changes what every number in the package means.
+The first registered release. Everything below shipped in it: the package was developed in the
+open against `main` and never carried a released version before this one, so what had been kept
+under `[Unreleased]` is folded in here rather than held back. The KdV sign convention recorded
+below is part of that fold, and it changes what every number in the package means — read it
+before comparing any figure against an earlier working copy.
 
 ### Added — `pinv` inverts the torus derivative on the modes that have one
 
@@ -1612,11 +1615,10 @@ is confined to round-off-dominated columns, and `|ΔC₀|` — conserved exactly
 arithmetic — is the internal control that shows it: 7.7e-12 in Python against 4.7e-12 in Julia
 over 766781 steps. Any `|ΔH|` reported at that order is arithmetic, not dynamics.
 
-## [0.1.0]
+### Added — the initial feature set
 
-Initial release.
-
-### Added
+This is the list the package was seeded with, kept as written. Everything above is what happened
+to it before it was first registered.
 
 - Discrete function spaces: `SplineSpace`, wrapping the periodic B-spline basis of
   SimpleSplines, and `LagrangeSpace`, a periodic nodal Lagrange finite element space built
@@ -1632,7 +1634,7 @@ Initial release.
 - Diagnostics: fused evaluation of the invariants, integration with windowed error
   envelopes, and the Poisson-map defect.
 - The Miura chart: `MiuraBracket`, the pushforward of the first bracket along the Miura map
-  (`u = v² + v_x` at the time; see Unreleased for the sign convention and for `λ`), antisymmetric *and* Poisson to round-off at every resolution where the
+  (`u = v² + v_x` at the time; see above for the sign convention and for `λ`), antisymmetric *and* Poisson to round-off at every resolution where the
   Galerkin second bracket fails the Jacobi identity at order one; `MiuraSystem`, carrying
   the mKdV degrees of freedom in which the bracket is constant; `miura_map`, `miura_invert`
   and `hill_lambda0` for moving between the two charts and for deciding whether a given
@@ -1644,7 +1646,7 @@ Initial release.
   extension points; submitted upstream as
   [JuliaGNI/SimpleSolvers.jl#183](https://github.com/JuliaGNI/SimpleSolvers.jl/pull/183),
   merged and released in SimpleSolvers 0.12.2, and consequently removed again here — see
-  Unreleased.
+  above.
 
 ### The Newton residual tolerance
 
