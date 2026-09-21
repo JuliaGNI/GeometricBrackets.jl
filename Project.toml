@@ -19,10 +19,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [weakdeps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 
-[sources.SimpleSplines]
-rev = "main"
-url = "https://github.com/JuliaDEC/SimpleSplines.jl"
-
 [extensions]
 GeometricBracketsMakieExt = "CairoMakie"
 
@@ -36,7 +32,7 @@ Printf = "1"
 QuadratureRules = "0.2"
 Random = "1"
 SimpleSolvers = "0.13, 0.14"
-SimpleSplines = "0.1, 0.2"
+SimpleSplines = "0.3"
 SparseArrays = "1"
 Sparspak = "0.3"
 StaticArrays = "1"
