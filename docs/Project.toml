@@ -8,7 +8,6 @@ SimpleSplines = "ac480f6c-9a94-4d53-a283-9db69f109154"
 
 [sources]
 GeometricBrackets = {path = ".."}
-SimpleSplines = {rev = "main", url = "https://github.com/JuliaDEC/SimpleSplines.jl"}
 
 [compat]
 CairoMakie = "0.12, 0.13, 0.14, 0.15"
