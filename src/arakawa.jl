@@ -63,7 +63,7 @@ jpc =
     - f[i+1, j  ] * h[i+1, j-1]
     + f[i+1, j  ] * h[i+1, j+1]
 
-jcp = 
+jcp =
     - f[i-1, j-1] * h[i-1, j  ]
     + f[i-1, j-1] * h[i,   j-1]
     + f[i-1, j+1] * h[i-1, j  ]

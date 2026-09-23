@@ -7,62 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — the grid-based Arakawa bracket, imported from ReducedBasisMethods
+### Added — the grid-based Arakawa bracket, a `DiscreteBracket` on a finite-difference grid
 
-**A relocation. Every function and struct body is byte-identical to its source**, so the diff
-reviews as a move rather than as new code. Three files arrive:
+Moved in from ReducedBasisMethods' `src/gridbased/`. Three files arrive:
 
+- `src/arakawa.jl` — `Arakawa(nx, nv, hx, hv)`, Arakawa's discretisation of the canonical
+  bracket on a doubly periodic `nx × nv` grid. It is a `DiscreteBracket` in Lie-Poisson form,
+  `P(f)_{JK} = hx·hv·Σ_I f_I A(I,J,K)`, linear in the grid state: `poisson_apply` contracts the
+  3 × 3 stencil and assembles no matrix, and `poisson_derivative` is the constant tensor
+  `hx·hv·A`. The assembled matrix satisfies `P == -P'` bit for bit. The Jacobi identity does
+  not hold: `jacobi_residual` is of order one and flat under refinement, 0.50–0.74 over 40
+  random states on grids of 5 to 8 nodes a side. Called as `arakawa(I, J, K)`, it returns the
+  stencil coefficient that one passes to `PoissonTensor` as its `f`. The constructor refuses a
+  grid with fewer than 3 nodes in a direction, where the two neighbours of a node coincide.
 - `src/poisson_tensors.jl` — `PoissonTensor`, an `N × N × N` tensor discretising the weak
   form of `g[f,h]` on an `nx × nv` phase-space grid, and `PoissonOperator`, the weak form of
   `f ↦ [f,h]` for a fixed Hamiltonian. Both index lazily through a stencil, so neither
   materialises until `Base.materialize` is called.
-- `src/arakawa.jl` — `Arakawa`, the classical Arakawa stencil as a callable `(I, J, K)`
-  coefficient, held as three `OffsetArray`s of signs and a `1/(12 hx hv)` factor. It is what
-  one passes to `PoissonTensor` as its `f`.
 - `src/bracket_operators.jl` — `_apply_P_h!` and `_apply_P_ϕ!`, the same bracket applied
   matrix-free to a vector, plus the Lenard-Bernstein-style collision stencils `_apply_C!`,
   `_apply_Cρ!`, `_apply_Cρ²!` and `_apply_Δᵥ!` that shared the file.
 
-New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays`, which
-now owns the `multiindex` / `_stencil_indices` helpers this code was carrying inline.
+The bodies in `poisson_tensors.jl` and `bracket_operators.jl` are byte-identical to their
+source.
 
-### Changed — `Arakawa` is now a `DiscreteBracket`, no longer detached from the hierarchy
+New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays` 0.1.1
+(JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex`, `_stencil_indices` and the
+predicate `isvalid`. That `isvalid` is its own function rather than a method of
+`Base.isvalid`, so the package imports it by name for the index assertions of `PoissonTensor`.
+Its `linearindex` bounds the second component by `nv`, where the ReducedBasisMethods copy
+checked `i ≤ nv`; a test on a 5 × 3 grid pins every index bound.
 
-The grid-based Arakawa bracket implements the `DiscreteBracket` interface:
-`Arakawa{DT} <: DiscreteBracket{DT}`, with the three required methods `poisson_matrix`,
-`poisson_apply`, and `poisson_derivative`. The Lie-Poisson form
-`P(f)_{JK} = hx·hv·Σ_I f_I A(I,J,K)` is linear in the grid state, and `poisson_derivative`
-returns the constant tensor `hx·hv·A` with integer coefficients over 12 regardless of grid
-spacing.
-
-**Properties verified.** Antisymmetry is bit-exact: `P == -P'` exactly. `jacobi_residual` is
-order one (measured 0.51–0.67 at grid sizes 5–8, 1.0 at size 4, and flat under refinement).
-`poisson_apply` contracts the 3 × 3 stencil and assembles no matrix. The DiscreteBracket
-docstring table now includes an Arakawa row.
-
-**Constructor validation.** `Arakawa` throws `ArgumentError` for `nx < 3` or `nv < 3`;
-bracket methods throw `DimensionMismatch` for a state of incompatible length.
-
-**Aqua piracy check clean.** The two `Base.materialize` overloads in `src/poisson_tensors.jl`
-dispatch on owned types and are not piracy; retained for use by downstream ReducedBasisMethods
-code.
-
-**Test coverage.** New file `test/arakawa_tests.jl` adds 53 tests: bit-exact antisymmetry,
-linearity in the state, `poisson_apply` vs `poisson_matrix` routes agreement, Casimirs (mass
-and enstrophy) conservation, Jacobi residual order one on growing grids, second-order
-convergence to the analytic bracket of RBM with the original 5e-4 tolerance at 512²,
-non-square index bounds, and argument error cases.
-
-### Fixed — `MultiIndexArrays` piracy
-
-MultiIndexArrays 0.1.1 (JuliaGNI/MultiIndexArrays.jl#2) removes its pirated
-`Base.isvalid(::CartesianIndex, nx, nv)` method, replacing it with a non-pirating
-`MultiIndexArrays.isvalid`. `PoissonTensor`'s `getindex` called the base method and
-would raise `MethodError` with 0.1.1. GeometricBrackets now imports `isvalid` from
-MultiIndexArrays, and its compat bound is raised to `"0.1.1"`. The fix corrects the index
-bound check to constrain each component against its own extent — the original RBM code checked
-the second component against `i`. A test on a 5×3 grid pins this: all four index tests fail
-under the old bound; all pass with the new one.
+No type piracy: Aqua's check is clean, and the two `Base.materialize` overloads dispatch on
+the package's own types.
 
 ## [0.1.0] — 2026-09-21
 
@@ -480,6 +457,7 @@ Nothing changed for an existing caller, and the whole suite passes unchanged.
 `test/polarspaces_tests.jl` is 54 tests. `scripts/verify_polar_bracket.jl` is registered in
 `scripts/run_all.jl` and indexed in `docs/src/scripts.md`, whose script counts move from
 twenty-four to twenty-six.
+
 
 ### Fixed — the `[sources]` comments promised a retirement a version bump does not earn
 

@@ -4,9 +4,9 @@ using LinearAlgebra
 using Random
 using Test
 
-# The Arakawa Jacobian [c, h] on an nx × nv grid, from the matrix-free operator imported with
-# it. It is written term by term from the three second-order Jacobians rather than from the
-# sign tables, so it is an independent reference for them.
+# The Arakawa Jacobian [c, h] on an nx × nv grid, from the matrix-free operator
+# `_apply_P_h!`. It is written term by term from the three second-order Jacobians rather
+# than from the sign tables, so it is an independent reference for them.
 function arakawa_jacobian(c, h, nx, nv, hx, hv)
     ci = CartesianIndices((nx, nv))
     J = zeros(nx * nv)
