@@ -29,13 +29,12 @@ Moved in from ReducedBasisMethods' `src/gridbased/`. Three files arrive:
   `_apply_Cρ!`, `_apply_Cρ²!` and `_apply_Δᵥ!` that shared the file.
 
 The bodies in `poisson_tensors.jl` and `bracket_operators.jl` are byte-identical to their
-source.
+source, except the three index assertions of `PoissonTensor`, which test
+`I in CartesianIndices((nx, nv))` where the source called a pirated `Base.isvalid`.
 
 New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays` 0.1.1
-(JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex`, `_stencil_indices` and the
-predicate `isvalid`. That `isvalid` is its own function rather than a method of
-`Base.isvalid`, so the package imports it by name for the index assertions of `PoissonTensor`.
-Its `linearindex` bounds the second component by `nv`, where the ReducedBasisMethods copy
+(JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex` and `_stencil_indices`. Its
+`linearindex` bounds the second component by `nv`, where the ReducedBasisMethods copy
 checked `i ≤ nv`; a test on a 5 × 3 grid pins every index bound.
 
 No type piracy: Aqua's check is clean, and the two `Base.materialize` overloads dispatch on

@@ -15,9 +15,9 @@ Base.size(pt::PoissonTensor) = tuple(pt.nx * pt.nv * ones(Int, 3)...)
 Base.size(pt::PoissonTensor, i) = i ≥ 1 && i ≤ 3 ? pt.nx * pt.nv : 1
 
 function Base.getindex(pt::PoissonTensor, I::CartesianIndex, J::CartesianIndex, K::CartesianIndex)
-    @assert isvalid(I, pt.nx, pt.nv)
-    @assert isvalid(J, pt.nx, pt.nv)
-    @assert isvalid(K, pt.nx, pt.nv)
+    @assert I in CartesianIndices((pt.nx, pt.nv))
+    @assert J in CartesianIndices((pt.nx, pt.nv))
+    @assert K in CartesianIndices((pt.nx, pt.nv))
 
     pt.f(I, J, K)
 end

@@ -2,7 +2,7 @@ module GeometricBrackets
 
 using CompactBasisFunctions
 using LinearAlgebra
-using MultiIndexArrays: isvalid, multiindex, _stencil_indices
+using MultiIndexArrays: multiindex, _stencil_indices
 using OffsetArrays
 using QuadratureRules
 using Random
