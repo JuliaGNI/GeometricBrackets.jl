@@ -66,6 +66,13 @@ Modules = [GeometricBrackets]
 Pages = ["arakawa.jl"]
 ```
 
+## Grid tensors — `poisson_tensors.jl`
+
+```@autodocs
+Modules = [GeometricBrackets]
+Pages = ["poisson_tensors.jl"]
+```
+
 ## Metric brackets — `metricbrackets.jl`
 
 ```@autodocs

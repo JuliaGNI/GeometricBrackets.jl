@@ -1,5 +1,5 @@
 using GeometricBrackets
-using GeometricBrackets: poisson_derivative, _apply_P_h!
+using GeometricBrackets: poisson_derivative, _apply_P_h!, _apply_P_ϕ!
 using LinearAlgebra
 using Random
 using Test
@@ -58,6 +58,19 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         end
     end
 
+    @testset "$(rpad("_apply_P_ϕ! is _apply_P_h! with h = ϕ + v²/2",76))" begin
+        for (nx, nv) in ARAKAWA_GRIDS
+            hx, hv = 1 / nx, 2 / nv
+            ci = CartesianIndices((nx, nv))
+            v = range(-1, 1 - hv, length = nv)
+            ϕ, f = randn(nx), randn(nx * nv)
+            h = vec([ϕ[i] + v[j]^2 / 2 for i in 1:nx, j in 1:nv])
+            Pf = zeros(nx * nv)
+            _apply_P_ϕ!(Pf, f, v, ϕ, ci, LinearIndices(ci), hx, hv)
+            @test Pf ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-13
+        end
+    end
+
     @testset "$(rpad("mass and enstrophy are Casimirs",76))" begin
         for (nx, nv) in ARAKAWA_GRIDS
             b = Arakawa(nx, nv, 1 / nx, 2 / nv)
@@ -77,6 +90,11 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test all(>(0.3), res)
         @test all(<(0.9), res)
         @test res[end] > res[1] / 2
+        # the residual of the structure constants hx hv A, which does not depend on the state
+        @test all(5:8) do n
+            b = Arakawa(n, n, 1 / n, 2 / n)
+            structure_constant_residual(poisson_derivative(b, zeros(n^2))) ≈ 0.5
+        end
     end
 
     @testset "$(rpad("the bracket converges to the analytic one at second order",76))" begin
@@ -113,14 +131,35 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test pt[nx, 1, 2nx] == a(I, J, K)
         # each with one component out of range, and every other component within 1:nv
         I₀, J₀, K₀ = CartesianIndex(1, 1), CartesianIndex(2, 1), CartesianIndex(1, 2)
-        @test_throws AssertionError pt[I₀, CartesianIndex(1, nv + 1), K₀]
-        @test_throws AssertionError pt[I₀, J₀, CartesianIndex(nx + 1, 1)]
-        @test_throws AssertionError pt[CartesianIndex(0, 1), J₀, K₀]
+        @test_throws BoundsError pt[I₀, CartesianIndex(1, nv + 1), K₀]
+        @test_throws BoundsError pt[I₀, J₀, CartesianIndex(nx + 1, 1)]
+        @test_throws BoundsError pt[CartesianIndex(0, 1), J₀, K₀]
+        @test_throws BoundsError pt[0, 1, 1]
+        @test_throws BoundsError pt[1, nx * nv + 1, 1]
+        @test_throws BoundsError pt[1, 1, nx * nv + 1]
 
         # every row, including those whose first component exceeds nv
         h, f = randn(nx * nv), randn(nx * nv)
+        T = Array(pt)
+        @test size(T) == size(pt)
+        @test [f' * T[i, :, :] * h for i in 1:(nx * nv)] ≈
+              arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
         po = PoissonOperator(pt, h)
-        @test Base.materialize(po) * f ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
+        @test Matrix(po) * f ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
+        @test_throws BoundsError po[0, 1]
+        @test_throws BoundsError po[1, nx * nv + 1]
+        @test_throws DimensionMismatch PoissonOperator(pt, randn(nx * nv + 1))
+    end
+
+    @testset "$(rpad("spacings of any real types construct an Arakawa",76))" begin
+        @test Arakawa(6, 7, 1, 2) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 1, 2.0) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 0.1f0, 0.2) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 0.1f0, 0.2f0) isa Arakawa{Float32}
+        @test Arakawa(6, 7, 1 // 6, 2 // 7) isa Arakawa{Rational{Int}}
+        b, a = Arakawa(6, 7, 1, 2), Arakawa(6, 7, 1.0, 2.0)
+        û = randn(42)
+        @test poisson_matrix(b, û) == poisson_matrix(a, û)
     end
 
     @testset "$(rpad("invalid grids and states are refused",76))" begin
@@ -130,5 +169,19 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws DimensionMismatch poisson_matrix(b, randn(11))
         @test_throws DimensionMismatch poisson_apply(b, randn(12), randn(13))
         @test_throws DimensionMismatch poisson_derivative(b, randn(13))
+        # a state of the right length whose axis is 0:11 rather than 1:12
+        @test_throws ArgumentError poisson_apply(b, randn(12), Base.IdentityUnitRange(0:11))
+
+        # the matrix-free operators on a 5 × 3 grid, with vectors of consistent but wrong length
+        ci = CartesianIndices((5, 3))
+        li = LinearIndices(ci)
+        @test_throws DimensionMismatch _apply_P_h!(
+            zeros(10), randn(10), randn(10), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(10), randn(10), randn(3), randn(5), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(15), randn(15), randn(4), randn(5), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(15), randn(15), randn(3), randn(4), ci, li, 0.2, 0.5)
     end
 end

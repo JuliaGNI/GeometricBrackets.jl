@@ -24,8 +24,9 @@ values in the order of `LinearIndices((nx, nv))`, and the structure matrix is li
 \mathbb{P}(\hat{f})_{JK} = h_x h_v \sum_I \hat{f}_I \, A(I, J, K) .
 ```
 
-[`poisson_apply`](@ref) contracts the stencil directly and builds no matrix.
-[`poisson_derivative`](@ref) is the constant tensor ``h_x h_v A(l, i, j)``, whatever
+[`poisson_apply`](@ref) builds no matrix. It evaluates
+``\mathbb{P}(\hat{f}) \, c = h_x h_v [c, \hat{f}]`` with the stencil directly.
+[`poisson_derivative`](@ref) is the constant tensor ``h_x h_v A(I, J, K)``, whatever
 ``\hat{f}``.
 
 Antisymmetry is exact. The sign tables satisfy ``A(I, J, K) = -A(I, K, J)`` in integers, and
@@ -83,52 +84,60 @@ struct Arakawa{DT} <: DiscreteBracket{DT}
     hv::DT
     factor::DT
 
-    JPP::OffsetArray{Int, 4, Array{Int, 4}}
-    JPC::OffsetArray{Int, 4, Array{Int, 4}}
-    JCP::OffsetArray{Int, 4, Array{Int, 4}}
+    # the sum of the sign tables of jpp, jpc and jcp, indexed by the offsets J - I and K - I,
+    # each shifted from -1:1 to 1:3
+    A::Array{Int, 4}
 
-    function Arakawa(nx::Int, nv::Int, hx::DT, hv::DT) where {DT}
+    # DT is the type of the coefficients, so integer spacings give floating-point ones
+    function Arakawa(nx::Int, nv::Int, hx::Real, hv::Real)
         nx ≥ 3 && nv ≥ 3 || throw(ArgumentError(
             "the Arakawa stencil needs at least 3 nodes per direction, got $nx × $nv"))
 
-        JPP = OffsetArray(zeros(Int, 3, 3, 3, 3), -1:+1, -1:+1, -1:+1, -1:+1)
-        JPC = OffsetArray(zeros(Int, 3, 3, 3, 3), -1:+1, -1:+1, -1:+1, -1:+1)
-        JCP = OffsetArray(zeros(Int, 3, 3, 3, 3), -1:+1, -1:+1, -1:+1, -1:+1)
+        A = zeros(Int, 3, 3, 3, 3)
+        add!(s, o...) = A[(o .+ 2)...] += s
 
-        JPP[-1, 0, 0, -1] = +1
-        JPP[-1, 0, 0, +1] = -1
-        JPP[0, -1, -1, 0] = -1
-        JPP[0, -1, +1, 0] = +1
-        JPP[0, +1, -1, 0] = +1
-        JPP[0, +1, +1, 0] = -1
-        JPP[+1, 0, 0, -1] = -1
-        JPP[+1, 0, 0, +1] = +1
+        # jpp
+        add!(+1, -1, 0, 0, -1)
+        add!(-1, -1, 0, 0, +1)
+        add!(-1, 0, -1, -1, 0)
+        add!(+1, 0, -1, +1, 0)
+        add!(+1, 0, +1, -1, 0)
+        add!(-1, 0, +1, +1, 0)
+        add!(-1, +1, 0, 0, -1)
+        add!(+1, +1, 0, 0, +1)
 
-        JPC[-1, 0, -1, -1] = +1
-        JPC[-1, 0, -1, +1] = -1
-        JPC[0, -1, -1, -1] = -1
-        JPC[0, -1, +1, -1] = +1
-        JPC[0, +1, -1, +1] = +1
-        JPC[0, +1, +1, +1] = -1
-        JPC[+1, 0, +1, -1] = -1
-        JPC[+1, 0, +1, +1] = +1
+        # jpc
+        add!(+1, -1, 0, -1, -1)
+        add!(-1, -1, 0, -1, +1)
+        add!(-1, 0, -1, -1, -1)
+        add!(+1, 0, -1, +1, -1)
+        add!(+1, 0, +1, -1, +1)
+        add!(-1, 0, +1, +1, +1)
+        add!(-1, +1, 0, +1, -1)
+        add!(+1, +1, 0, +1, +1)
 
-        JCP[-1, -1, -1, 0] = -1
-        JCP[-1, -1, 0, -1] = +1
-        JCP[-1, +1, -1, 0] = +1
-        JCP[-1, +1, 0, +1] = -1
-        JCP[+1, -1, 0, -1] = -1
-        JCP[+1, -1, +1, 0] = +1
-        JCP[+1, +1, 0, +1] = +1
-        JCP[+1, +1, +1, 0] = -1
+        # jcp
+        add!(-1, -1, -1, -1, 0)
+        add!(+1, -1, -1, 0, -1)
+        add!(+1, -1, +1, -1, 0)
+        add!(-1, -1, +1, 0, +1)
+        add!(-1, +1, -1, 0, -1)
+        add!(+1, +1, -1, +1, 0)
+        add!(+1, +1, +1, 0, +1)
+        add!(-1, +1, +1, +1, 0)
 
         factor = inv(hx) * inv(hv) / 12
 
-        new{DT}(nx, nv, hx, hv, factor, JPP, JPC, JCP)
+        new{typeof(factor)}(nx, nv, hx, hv, factor, A)
     end
 end
 
 mymod(i, n, w = 1) = abs(i) ≥ n - w ? i - n * sign(i) : i
+
+# A(I, J, K) for the offsets d = J - I and e = K - I, each in -1:1 per direction
+function _coefficient(arakawa::Arakawa, d, e)
+    arakawa.A[(Tuple(d) .+ 2)..., (Tuple(e) .+ 2)...] * arakawa.factor
+end
 
 function (arakawa::Arakawa{DT})(I, J, K) where {DT}
     fi = mymod.(Tuple(J - I), (arakawa.nx, arakawa.nv))
@@ -138,15 +147,14 @@ function (arakawa::Arakawa{DT})(I, J, K) where {DT}
         return zero(DT)
     end
 
-    (arakawa.JPP[fi..., hi...] +
-     arakawa.JPC[fi..., hi...] +
-     arakawa.JCP[fi..., hi...]) * arakawa.factor
+    _coefficient(arakawa, fi, hi)
 end
 
 ### Arakawa as a DiscreteBracket ###
 
-# A(I, J, K) vanishes unless J and K both lie in the 3 × 3 stencil around I, so every sum over
-# (I, J, K) below runs over I and two offsets from it. I is the outer loop, in linear order.
+# A(I, J, K) vanishes unless J and K both lie in the 3 × 3 stencil around I, so the sums
+# over (I, J, K) in `poisson_matrix` and `poisson_derivative` run over I and two offsets
+# from it. I is the outer loop, in linear order.
 const _ARAKAWA_OFFSETS = CartesianIndices((-1:1, -1:1))
 
 _wrap(b::Arakawa, I::CartesianIndex{2}) = CartesianIndex(mod1(I[1], b.nx), mod1(I[2], b.nv))
@@ -169,31 +177,21 @@ function poisson_matrix(b::Arakawa{DT}, û::AbstractVector) where {DT}
 
             J = _wrap(b, I + d)
             K = _wrap(b, I + e)
-            P[li[J], li[K]] += w * b(I, J, K)
+            P[li[J], li[K]] += w * _coefficient(b, d, e)
         end
     end
     return P
 end
 
+# (P(û) c)_J = hx hv Σ_{I,K} û_I A(I, J, K) c_K = hx hv [c, û]_J, by the cyclic symmetry of
+# Arakawa's coefficients, and `_apply_P_h!` evaluates the Jacobian [c, û] on the stencil.
 function poisson_apply(b::Arakawa{DT}, û::AbstractVector, c::AbstractVector) where {DT}
     _check_state(b, û)
     _check_state(b, c)
-    T = promote_type(DT, eltype(û), eltype(c))
-    li = LinearIndices((b.nx, b.nv))
-    Pc = zeros(T, length(li))
-    for I in CartesianIndices(li)
-        w = b.hx * b.hv * û[li[I]]
-        for d in _ARAKAWA_OFFSETS
-            J = _wrap(b, I + d)
-            s = zero(T)
-            for e in _ARAKAWA_OFFSETS
-                K = _wrap(b, I + e)
-                s += b(I, J, K) * c[li[K]]
-            end
-            Pc[li[J]] += w * s
-        end
-    end
-    return Pc
+    ci = CartesianIndices((b.nx, b.nv))
+    Pc = zeros(promote_type(DT, eltype(û), eltype(c)), length(ci))
+    _apply_P_h!(Pc, c, û, ci, LinearIndices(ci), b.hx, b.hv)
+    return rmul!(Pc, b.hx * b.hv)
 end
 
 function poisson_derivative(b::Arakawa{DT}, û::AbstractVector) where {DT}
@@ -204,7 +202,7 @@ function poisson_derivative(b::Arakawa{DT}, û::AbstractVector) where {DT}
     for I in CartesianIndices(li), d in _ARAKAWA_OFFSETS, e in _ARAKAWA_OFFSETS
         J = _wrap(b, I + d)
         K = _wrap(b, I + e)
-        dP[li[I], li[J], li[K]] = b.hx * b.hv * b(I, J, K)
+        dP[li[I], li[J], li[K]] = b.hx * b.hv * _coefficient(b, d, e)
     end
     return dP
 end

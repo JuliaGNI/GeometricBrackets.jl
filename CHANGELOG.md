@@ -5,6 +5,72 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+This patch release changes and removes API because 0.1.1 was released the same day,
+and no package outside this repository depends on these names in a registered release.
+
+### Fixed
+
+`Arakawa(nx, nv, hx, hv)` accepts spacings of any `Real` types; the element type is
+that of `inv(hx) * inv(hv) / 12`. In 0.1.1 integer spacings threw `InexactError` and
+mixed types a `MethodError`.
+
+### Changed
+
+- `PoissonTensor` and `PoissonOperator` indexing off the grid throws `BoundsError`
+  (was `AssertionError` from `@assert`, which may be compiled out). Both the
+  `CartesianIndex` and the linear-index methods of `PoissonTensor` check;
+  `PoissonOperator` uses `checkbounds`.
+- `PoissonOperator(tensor, h)` throws `DimensionMismatch` when `length(h)` is not
+  `nx * nv`.
+- `Array(pt)` materialises a `PoissonTensor`, and `Matrix(po)` a `PoissonOperator`
+  (it is an `AbstractMatrix`). The two `Base.materialize` methods are removed,
+  because `Base.materialize` is not public Base API. Note for callers:
+  `Base.materialize(x)` now falls back to Base's identity and returns the lazy
+  object itself rather than an error.
+- `_apply_P_h!` and `_apply_P_ϕ!` are no longer exported (leading-underscore
+  internals; reach them as `GeometricBrackets._apply_P_h!` or by explicit `using
+  GeometricBrackets: _apply_P_h!`). This also removes the name clash with
+  ReducedBasisMethods, which exports the same names in its released versions.
+  `PoissonTensor` and `PoissonOperator` stay exported and now have docstrings, shown
+  on the library page.
+- `_apply_P_h!` throws `DimensionMismatch` unless `Pf`, `f` and `h` have length
+  `nx * ny`, the number of grid nodes, and `ArgumentError` if any input has
+  non-1-based indexing. It checked only that the three lengths were equal, so its
+  `@inbounds` loop read and wrote past the end of equally short vectors. The
+  tests cover the length checks of `_apply_P_h!` and `_apply_P_ϕ!`.
+- `poisson_apply(::Arakawa, û, c)` evaluates `hx·hv·[c, û]` with `_apply_P_h!`;
+  same values to rounding, about two orders of magnitude faster at n = 64 and n = 256,
+  allocating only its output.
+- `size(::PoissonTensor)` infers a concrete `NTuple{3, Int}`; `PoissonOperator`
+  indexing no longer allocates a neighbour vector per entry.
+
+### Removed
+
+- Dependencies `OffsetArrays` and `MultiIndexArrays`. The Arakawa sign tables are
+  one plain `Array{Int,4}` (their sum, the only way they were read); the 3 × 3
+  periodic stencil of `PoissonOperator` and the linear-to-Cartesian conversion are
+  written in the package with `CartesianIndices`, so no non-public name of another
+  package is used.
+- The uncalled helpers `inc`, `dec` and the collision stencils `_apply_C!`,
+  `_apply_Cρ!`, `_apply_Cρ²!`, `_apply_Δᵥ!` (never exported, no caller, no test).
+
+### Corrections to the 0.1.1 entry
+
+- `PoissonTensor`/`PoissonOperator` are not a "weak form": `PoissonOperator * g` is
+  the bracket at the grid nodes with no `hx·hv` quadrature weight. `PoissonTensor`
+  holds `T` with `[g, h]_I = Σ_{J,K} T[I,J,K] g_J h_K`.
+- The Jacobi band "0.50–0.74 over 40 random states" is one sample; the
+  state-independent figure is `structure_constant_residual(poisson_derivative(b, û))
+  == 0.5` on n × n grids, n = 5..8, now asserted in the tests.
+- "a test on a 5 × 3 grid pins every index bound" overstated the coverage in 0.1.1;
+  the tests now cover every index check of both types.
+
+Tests added: real-typed spacings, `_apply_P_ϕ!` against `_apply_P_h!`, the 0.5
+structure-constant residual, `Array(pt)` contracted against the independent Jacobian,
+and the `BoundsError`/`DimensionMismatch` cases.
+
 ## [0.1.1] — 2026-09-24
 
 ### Added — the grid-based Arakawa bracket, a `DiscreteBracket` on a finite-difference grid
