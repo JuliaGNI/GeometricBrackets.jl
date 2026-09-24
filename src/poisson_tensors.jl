@@ -1,5 +1,6 @@
 ### Poisson Tensor (used with h)
-# A N × N × N tensor that discretizes the weak form of the Arakawa bracket g[f,h]
+# The N × N × N tensor T of a bracket on an nx × nv grid, [g, h]_I = Σ_{J,K} T[I, J, K] g_J h_K.
+# The field `f` returns T[I, J, K] for three CartesianIndexes, as an `Arakawa` does.
 
 struct PoissonTensor{DT, FT}
     nx::Int
@@ -11,7 +12,7 @@ struct PoissonTensor{DT, FT}
     end
 end
 
-Base.size(pt::PoissonTensor) = tuple(pt.nx * pt.nv * ones(Int, 3)...)
+Base.size(pt::PoissonTensor) = ntuple(_ -> pt.nx * pt.nv, 3)
 Base.size(pt::PoissonTensor, i) = i ≥ 1 && i ≤ 3 ? pt.nx * pt.nv : 1
 
 function Base.getindex(pt::PoissonTensor, I::CartesianIndex, J::CartesianIndex, K::CartesianIndex)
@@ -35,7 +36,8 @@ function Base.materialize(rt::PoissonTensor)
 end
 
 ### Poisson Operator
-# weak form of the Operator f ↦ [f,h]
+# the operator g ↦ [g, h] for a fixed h, as the matrix PO[I, J] = Σ_K T[I, J, K] h_K. It gives
+# the bracket at the grid nodes, with no quadrature weight.
 
 struct PoissonOperator{DT, PT, HT} <: AbstractMatrix{DT}
     tensor::PT
