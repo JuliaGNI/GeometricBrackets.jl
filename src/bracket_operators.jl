@@ -8,6 +8,7 @@ Write Arakawa's Jacobian `[f, h]` into `Pf`, matrix-free, on a doubly periodic g
 function _apply_P_h!(
         Pf::AbstractVector, f::AbstractVector, h::AbstractVector, ci, li, h₁, h₂)
     nx, ny = size(ci)
+    Base.require_one_based_indexing(Pf, f, h)
     length(Pf) == length(f) == length(h) == nx * ny || throw(DimensionMismatch(
         "_apply_P_h! on a $nx × $ny grid needs vectors of length $(nx * ny), got " *
         "$(length(Pf)), $(length(f)) and $(length(h))"))

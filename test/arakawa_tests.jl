@@ -169,6 +169,8 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws DimensionMismatch poisson_matrix(b, randn(11))
         @test_throws DimensionMismatch poisson_apply(b, randn(12), randn(13))
         @test_throws DimensionMismatch poisson_derivative(b, randn(13))
+        # a state of the right length whose axis is 0:11 rather than 1:12
+        @test_throws ArgumentError poisson_apply(b, randn(12), Base.IdentityUnitRange(0:11))
 
         # the matrix-free operators on a 5 × 3 grid, with vectors of consistent but wrong length
         ci = CartesianIndices((5, 3))

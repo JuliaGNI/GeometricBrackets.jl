@@ -36,12 +36,13 @@ mixed types a `MethodError`.
   `PoissonTensor` and `PoissonOperator` stay exported and now have docstrings, shown
   on the library page.
 - `_apply_P_h!` throws `DimensionMismatch` unless `Pf`, `f` and `h` have length
-  `nx * ny`, the number of grid nodes. It checked only that the three lengths were
-  equal, so its `@inbounds` loop read and wrote past the end of equally short
-  vectors. The tests cover the length checks of `_apply_P_h!` and `_apply_P_ϕ!`.
+  `nx * ny`, the number of grid nodes, and `ArgumentError` if any input has
+  non-1-based indexing. It checked only that the three lengths were equal, so its
+  `@inbounds` loop read and wrote past the end of equally short vectors. The
+  tests cover the length checks of `_apply_P_h!` and `_apply_P_ϕ!`.
 - `poisson_apply(::Arakawa, û, c)` evaluates `hx·hv·[c, û]` with `_apply_P_h!`;
-  same values to rounding, measured about 150 times faster at n = 64 and n = 256
-  (single runs, minimum of repeated calls), allocating only its output.
+  same values to rounding, about two orders of magnitude faster at n = 64 and n = 256,
+  allocating only its output.
 - `size(::PoissonTensor)` infers a concrete `NTuple{3, Int}`; `PoissonOperator`
   indexing no longer allocates a neighbour vector per entry.
 
