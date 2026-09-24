@@ -152,8 +152,9 @@ end
 
 ### Arakawa as a DiscreteBracket ###
 
-# A(I, J, K) vanishes unless J and K both lie in the 3 × 3 stencil around I, so every sum over
-# (I, J, K) below runs over I and two offsets from it. I is the outer loop, in linear order.
+# A(I, J, K) vanishes unless J and K both lie in the 3 × 3 stencil around I, so the sums
+# over (I, J, K) in `poisson_matrix` and `poisson_derivative` run over I and two offsets
+# from it. I is the outer loop, in linear order.
 const _ARAKAWA_OFFSETS = CartesianIndices((-1:1, -1:1))
 
 _wrap(b::Arakawa, I::CartesianIndex{2}) = CartesianIndex(mod1(I[1], b.nx), mod1(I[2], b.nv))
