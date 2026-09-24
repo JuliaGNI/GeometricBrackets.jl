@@ -13,29 +13,38 @@ Moved in from ReducedBasisMethods' `src/gridbased/`. Three files arrive:
 
 - `src/arakawa.jl` — `Arakawa(nx, nv, hx, hv)`, Arakawa's discretisation of the canonical
   bracket on a doubly periodic `nx × nv` grid. It is a `DiscreteBracket` in Lie-Poisson form,
-  `P(f)_{JK} = hx·hv·Σ_I f_I A(I,J,K)`, linear in the grid state: `poisson_apply` contracts the
-  3 × 3 stencil and assembles no matrix, and `poisson_derivative` is the constant tensor
+  `P(f)_{JK} = hx·hv·Σ_I f_I A(I,J,K)`, linear in the grid state. `poisson_apply` evaluates
+  `hx·hv·[c, û]` with the matrix-free `_apply_P_h!` and assembles no matrix;
+  `poisson_derivative` is the constant tensor
   `hx·hv·A`. The assembled matrix satisfies `P == -P'` bit for bit. The Jacobi identity does
-  not hold: `jacobi_residual` is of order one and flat under refinement, 0.50–0.74 over 40
-  random states on grids of 5 to 8 nodes a side. Called as `arakawa(I, J, K)`, it returns the
-  stencil coefficient that one passes to `PoissonTensor` as its `f`. The constructor refuses a
-  grid with fewer than 3 nodes in a direction, where the two neighbours of a node coincide.
-- `src/poisson_tensors.jl` — `PoissonTensor`, an `N × N × N` tensor discretising the weak
-  form of `g[f,h]` on an `nx × nv` phase-space grid, and `PoissonOperator`, the weak form of
-  `f ↦ [f,h]` for a fixed Hamiltonian. Both index lazily through a stencil, so neither
-  materialises until `Base.materialize` is called.
+  not hold: `jacobi_residual` is of order one and flat under refinement; the state-independent
+  quantity `structure_constant_residual(poisson_derivative(b, û))` is exactly 0.5 on n×n grids
+  for n = 5..8. Called as `arakawa(I, J, K)`, it returns the stencil coefficient that one passes
+  to `PoissonTensor` as its `f`. The constructor accepts spacings of any `Real` types, and the
+  element type is determined by `inv(hx) * inv(hv) / 12`: integer spacings give `Float64`, mixed
+  Float32 and Float64 give `Float64`, two Float32 give `Float32`, and two `Rational`s give
+  `Rational`. It refuses a grid with fewer than 3 nodes in a direction, where the two neighbours
+  of a node coincide.
+- `src/poisson_tensors.jl` — `PoissonTensor`, the `N × N × N` tensor of bracket coefficients
+  on an `nx × nv` phase-space grid with triplets `[i, j, k]` satisfying
+  `[g, h]_i = Σ_{j,k} T[i, j, k] g_j h_k`; and `PoissonOperator`, the bracket operator
+  `g ↦ [g, h]` for a fixed Hamiltonian h, evaluated as the Jacobian at the grid nodes with no
+  hx·hv quadrature weight. Both index lazily through a stencil, so neither materialises until
+  `Base.materialize` is called.
 - `src/bracket_operators.jl` — `_apply_P_h!` and `_apply_P_ϕ!`, the same bracket applied
   matrix-free to a vector, plus the Lenard-Bernstein-style collision stencils `_apply_C!`,
   `_apply_Cρ!`, `_apply_Cρ²!` and `_apply_Δᵥ!` that shared the file.
 
-The bodies in `poisson_tensors.jl` and `bracket_operators.jl` are byte-identical to their
-source, except the three index assertions of `PoissonTensor`, which test
-`I in CartesianIndices((nx, nv))` where the source called a pirated `Base.isvalid`.
+In `poisson_tensors.jl`, the three index assertions test `I in CartesianIndices((nx, nv))`
+where the source called a pirated `Base.isvalid`, `size(::PoissonTensor)` returns
+`ntuple(_ -> nx * nv, 3)` to infer a concrete `NTuple{3, Int}` with no allocation, and
+two comment headers are updated. The body of `bracket_operators.jl` is byte-identical
+to its source.
 
-New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays` 0.1.1
-(JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex` and `_stencil_indices`. Its
-`linearindex` bounds the second component by `nv`, where the ReducedBasisMethods copy
-checked `i ≤ nv`; a test on a 5 × 3 grid pins every index bound.
+New dependency: `MultiIndexArrays` 0.1.1 (JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex`
+and `_stencil_indices`. Its `linearindex` bounds the second component by `nv`, where the
+ReducedBasisMethods copy checked `i ≤ nv`; a test on a 5 × 3 grid exercises the three
+`PoissonTensor` `CartesianIndex` assertions and every row of `PoissonOperator`.
 
 No type piracy: Aqua's check is clean, and the two `Base.materialize` overloads dispatch on
 the package's own types.

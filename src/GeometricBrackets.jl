@@ -3,7 +3,6 @@ module GeometricBrackets
 using CompactBasisFunctions
 using LinearAlgebra
 using MultiIndexArrays: multiindex, _stencil_indices
-using OffsetArrays
 using QuadratureRules
 using Random
 using SimpleSolvers

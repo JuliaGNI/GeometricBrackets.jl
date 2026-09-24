@@ -1,5 +1,5 @@
 using GeometricBrackets
-using GeometricBrackets: poisson_derivative, _apply_P_h!
+using GeometricBrackets: poisson_derivative, _apply_P_h!, _apply_P_ϕ!
 using LinearAlgebra
 using Random
 using Test
@@ -58,6 +58,19 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         end
     end
 
+    @testset "$(rpad("_apply_P_ϕ! is _apply_P_h! with h = ϕ + v²/2",76))" begin
+        for (nx, nv) in ARAKAWA_GRIDS
+            hx, hv = 1 / nx, 2 / nv
+            ci = CartesianIndices((nx, nv))
+            v = range(-1, 1 - hv, length = nv)
+            ϕ, f = randn(nx), randn(nx * nv)
+            h = vec([ϕ[i] + v[j]^2 / 2 for i in 1:nx, j in 1:nv])
+            Pf = zeros(nx * nv)
+            _apply_P_ϕ!(Pf, f, v, ϕ, ci, LinearIndices(ci), hx, hv)
+            @test Pf ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-13
+        end
+    end
+
     @testset "$(rpad("mass and enstrophy are Casimirs",76))" begin
         for (nx, nv) in ARAKAWA_GRIDS
             b = Arakawa(nx, nv, 1 / nx, 2 / nv)
@@ -77,6 +90,11 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test all(>(0.3), res)
         @test all(<(0.9), res)
         @test res[end] > res[1] / 2
+        # the residual of the structure constants hx hv A, which does not depend on the state
+        @test all(5:8) do n
+            b = Arakawa(n, n, 1 / n, 2 / n)
+            structure_constant_residual(poisson_derivative(b, zeros(n^2))) ≈ 0.5
+        end
     end
 
     @testset "$(rpad("the bracket converges to the analytic one at second order",76))" begin
@@ -121,6 +139,17 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         h, f = randn(nx * nv), randn(nx * nv)
         po = PoissonOperator(pt, h)
         @test Base.materialize(po) * f ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
+    end
+
+    @testset "$(rpad("spacings of any real types construct an Arakawa",76))" begin
+        @test Arakawa(6, 7, 1, 2) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 1, 2.0) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 0.1f0, 0.2) isa Arakawa{Float64}
+        @test Arakawa(6, 7, 0.1f0, 0.2f0) isa Arakawa{Float32}
+        @test Arakawa(6, 7, 1 // 6, 2 // 7) isa Arakawa{Rational{Int}}
+        b, a = Arakawa(6, 7, 1, 2), Arakawa(6, 7, 1.0, 2.0)
+        û = randn(42)
+        @test poisson_matrix(b, û) == poisson_matrix(a, û)
     end
 
     @testset "$(rpad("invalid grids and states are refused",76))" begin
