@@ -2,7 +2,6 @@ module GeometricBrackets
 
 using CompactBasisFunctions
 using LinearAlgebra
-using MultiIndexArrays: multiindex, _stencil_indices
 using QuadratureRules
 using Random
 using SimpleSolvers
@@ -168,9 +167,6 @@ include("poisson_tensors.jl")
 export Arakawa
 
 include("arakawa.jl")
-
-export _apply_P_ϕ!, _apply_P_h!
-
 include("bracket_operators.jl")
 
 end

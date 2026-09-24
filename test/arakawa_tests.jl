@@ -131,14 +131,24 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test pt[nx, 1, 2nx] == a(I, J, K)
         # each with one component out of range, and every other component within 1:nv
         I₀, J₀, K₀ = CartesianIndex(1, 1), CartesianIndex(2, 1), CartesianIndex(1, 2)
-        @test_throws AssertionError pt[I₀, CartesianIndex(1, nv + 1), K₀]
-        @test_throws AssertionError pt[I₀, J₀, CartesianIndex(nx + 1, 1)]
-        @test_throws AssertionError pt[CartesianIndex(0, 1), J₀, K₀]
+        @test_throws BoundsError pt[I₀, CartesianIndex(1, nv + 1), K₀]
+        @test_throws BoundsError pt[I₀, J₀, CartesianIndex(nx + 1, 1)]
+        @test_throws BoundsError pt[CartesianIndex(0, 1), J₀, K₀]
+        @test_throws BoundsError pt[0, 1, 1]
+        @test_throws BoundsError pt[1, nx * nv + 1, 1]
+        @test_throws BoundsError pt[1, 1, nx * nv + 1]
 
         # every row, including those whose first component exceeds nv
         h, f = randn(nx * nv), randn(nx * nv)
+        T = Array(pt)
+        @test size(T) == size(pt)
+        @test [f' * T[i, :, :] * h for i in 1:(nx * nv)] ≈
+              arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
         po = PoissonOperator(pt, h)
-        @test Base.materialize(po) * f ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
+        @test Matrix(po) * f ≈ arakawa_jacobian(f, h, nx, nv, hx, hv) rtol=1e-14
+        @test_throws BoundsError po[0, 1]
+        @test_throws BoundsError po[1, nx * nv + 1]
+        @test_throws DimensionMismatch PoissonOperator(pt, randn(nx * nv + 1))
     end
 
     @testset "$(rpad("spacings of any real types construct an Arakawa",76))" begin
