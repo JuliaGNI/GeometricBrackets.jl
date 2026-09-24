@@ -169,5 +169,17 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws DimensionMismatch poisson_matrix(b, randn(11))
         @test_throws DimensionMismatch poisson_apply(b, randn(12), randn(13))
         @test_throws DimensionMismatch poisson_derivative(b, randn(13))
+
+        # the matrix-free operators on a 5 × 3 grid, with vectors of consistent but wrong length
+        ci = CartesianIndices((5, 3))
+        li = LinearIndices(ci)
+        @test_throws DimensionMismatch _apply_P_h!(
+            zeros(10), randn(10), randn(10), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(10), randn(10), randn(3), randn(5), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(15), randn(15), randn(4), randn(5), ci, li, 0.2, 0.5)
+        @test_throws DimensionMismatch _apply_P_ϕ!(
+            zeros(15), randn(15), randn(3), randn(4), ci, li, 0.2, 0.5)
     end
 end
