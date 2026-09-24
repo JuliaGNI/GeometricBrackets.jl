@@ -27,6 +27,7 @@ and the answer differs from one bracket to the next.
 | [`GaugedBracket`](@ref) | yes | yes, by the theorem it is built on |
 | [`MiuraBracket`](@ref) | yes | yes, being a pushforward of a Poisson bracket |
 | [`AffineBracket`](@ref) | yes | **no** — and this is a result, not a defect |
+| [`Arakawa`](@ref) | yes | **no** — the residual is of order one under refinement |
 
 The failure of [`AffineBracket`](@ref) is the point of the KdV manuscript: the second
 Hamiltonian structure of KdV is the Virasoro algebra, so the Jacobi identity would require

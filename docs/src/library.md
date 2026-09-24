@@ -59,6 +59,13 @@ Modules = [GeometricBrackets]
 Pages = ["src/brackets.jl"]
 ```
 
+## The Arakawa bracket — `arakawa.jl`
+
+```@autodocs
+Modules = [GeometricBrackets]
+Pages = ["arakawa.jl"]
+```
+
 ## Metric brackets — `metricbrackets.jl`
 
 ```@autodocs

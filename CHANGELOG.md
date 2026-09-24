@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added — the grid-based Arakawa bracket, a `DiscreteBracket` on a finite-difference grid
+
+Moved in from ReducedBasisMethods' `src/gridbased/`. Three files arrive:
+
+- `src/arakawa.jl` — `Arakawa(nx, nv, hx, hv)`, Arakawa's discretisation of the canonical
+  bracket on a doubly periodic `nx × nv` grid. It is a `DiscreteBracket` in Lie-Poisson form,
+  `P(f)_{JK} = hx·hv·Σ_I f_I A(I,J,K)`, linear in the grid state: `poisson_apply` contracts the
+  3 × 3 stencil and assembles no matrix, and `poisson_derivative` is the constant tensor
+  `hx·hv·A`. The assembled matrix satisfies `P == -P'` bit for bit. The Jacobi identity does
+  not hold: `jacobi_residual` is of order one and flat under refinement, 0.50–0.74 over 40
+  random states on grids of 5 to 8 nodes a side. Called as `arakawa(I, J, K)`, it returns the
+  stencil coefficient that one passes to `PoissonTensor` as its `f`. The constructor refuses a
+  grid with fewer than 3 nodes in a direction, where the two neighbours of a node coincide.
+- `src/poisson_tensors.jl` — `PoissonTensor`, an `N × N × N` tensor discretising the weak
+  form of `g[f,h]` on an `nx × nv` phase-space grid, and `PoissonOperator`, the weak form of
+  `f ↦ [f,h]` for a fixed Hamiltonian. Both index lazily through a stencil, so neither
+  materialises until `Base.materialize` is called.
+- `src/bracket_operators.jl` — `_apply_P_h!` and `_apply_P_ϕ!`, the same bracket applied
+  matrix-free to a vector, plus the Lenard-Bernstein-style collision stencils `_apply_C!`,
+  `_apply_Cρ!`, `_apply_Cρ²!` and `_apply_Δᵥ!` that shared the file.
+
+The bodies in `poisson_tensors.jl` and `bracket_operators.jl` are byte-identical to their
+source, except the three index assertions of `PoissonTensor`, which test
+`I in CartesianIndices((nx, nv))` where the source called a pirated `Base.isvalid`.
+
+New dependencies: `OffsetArrays`, for the Arakawa sign tables, and `MultiIndexArrays` 0.1.1
+(JuliaGNI/MultiIndexArrays.jl#2), which owns `multiindex` and `_stencil_indices`. Its
+`linearindex` bounds the second component by `nv`, where the ReducedBasisMethods copy
+checked `i ≤ nv`; a test on a 5 × 3 grid pins every index bound.
+
+No type piracy: Aqua's check is clean, and the two `Base.materialize` overloads dispatch on
+the package's own types.
+
 ## [0.1.0] — 2026-09-21
 
 The first registered release. Everything below shipped in it: the package was developed in the
