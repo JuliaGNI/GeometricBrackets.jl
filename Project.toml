@@ -1,6 +1,6 @@
 name = "GeometricBrackets"
 uuid = "2a9ffa85-4e0d-473f-b05e-278d80d8d306"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Michael Kraus"]
 
 [deps]
