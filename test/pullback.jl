@@ -1,9 +1,5 @@
 using GeometricBrackets
 using LinearAlgebra
-# By name, never a bare `using SimpleSplines`: every test file is included into the same
-# `Main`, and `stiffness_matrix`, `weighted_matrix` and `derivative_matrix` are each a
-# *different* generic in the two packages. A bare `using` here makes those names ambiguous in
-# every test file included after this one, which is a failure in somebody else's testset.
 using SimpleSplines: UniformMesh, Periodic, Dirichlet, (..)
 using Random
 using Test

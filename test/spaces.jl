@@ -1,11 +1,9 @@
 using GeometricBrackets
 using LinearAlgebra
-using SimpleSplines: UniformMesh, GradedMesh, RandomMesh, MassOperator
+using SimpleSplines: GradedMesh, RandomMesh, MassOperator
 using SparseArrays
 using Random
 using Test
-
-include("helpers/meshes.jl")
 
 Random.seed!(0x5c1e9a3b)
 

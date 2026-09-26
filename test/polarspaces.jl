@@ -2,9 +2,6 @@ using GeometricBrackets
 using LinearAlgebra
 using Random
 using SparseArrays
-# By name, never a bare `using SimpleSplines`: the test files share one `Main`, and
-# `stiffness_matrix`, `weighted_matrix` and `derivative_matrix` are each a different generic
-# in the two packages.
 using SimpleSplines: UniformMesh, BSplineBasis, PeriodicBSplineBasis, PolarSplineBasis,
                      bases, (..)
 using Test
