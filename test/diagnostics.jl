@@ -1,7 +1,10 @@
 using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh
+using Random
 using Test
+
+Random.seed!(0x5c1e9a3b)
 
 @testset "$(rpad("Diagnostics Tests",80))" begin
     s = SplineSpace(UniformMesh(16, 2π), 3)

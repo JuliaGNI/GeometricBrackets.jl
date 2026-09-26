@@ -4,6 +4,8 @@ using LinearAlgebra
 using Random
 using Test
 
+Random.seed!(0x5c1e9a3b)
+
 # The Arakawa Jacobian [c, h] on an nx × nv grid, from the matrix-free operator
 # `_apply_P_h!`. It is written term by term from the three second-order Jacobians rather
 # than from the sign tables, so it is an independent reference for them.

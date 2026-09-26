@@ -3,6 +3,8 @@ using LinearAlgebra
 using SimpleSplines: UniformMesh, RandomMesh
 using Test
 
+include("helpers/meshes.jl")
+
 @testset "$(rpad("Miura Tests",80))" begin
     @testset "$(rpad("the mass identity int u_h = -int v_h^2 is EXACT",76))" begin
         # Pairing û = M_h(v̂) with the partition of unity gives this to the last bit, and it

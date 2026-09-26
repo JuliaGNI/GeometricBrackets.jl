@@ -1,34 +1,33 @@
-using GeometricBrackets
-using Random
-using Test
+using SafeTestsets
 
-# Several tests excite the full spectrum with random degrees of freedom, which is
-# deliberate: a cross-conservation identity tested on a single smooth mode reports round-off
-# and hides the cubic obstruction entirely. The seed is fixed so that a failure is
-# reproducible.
-Random.seed!(0x5c1e9a3b)
+const GROUPS = isempty(ARGS) ? ["core", "slow"] : ARGS
 
-include("aqua_tests.jl")
-include("exact_tests.jl")
-include("spaces_tests.jl")
-include("tensorspaces_tests.jl")
-include("polarspaces_tests.jl")
-include("pullback_tests.jl")
-include("brackets_tests.jl")
-include("arakawa_tests.jl")
-include("metricbrackets_tests.jl")
-include("collisionbrackets_tests.jl")
-include("algebras_tests.jl")
-include("torus_tests.jl")
-include("fourbrackets_tests.jl")
-include("metriplectic_tests.jl")
-include("dirac_tests.jl")
-include("hamiltonians_tests.jl")
-include("flows_tests.jl")
-include("metriplecticflows_tests.jl")
-include("integrators_tests.jl")
-include("kdv_tests.jl")
-include("miura_tests.jl")
-include("burgers_tests.jl")
-include("camassaholm_tests.jl")
-include("diagnostics_tests.jl")
+if "core" in GROUPS
+    @safetestset "Aqua" include("quality/aqua.jl")
+    @safetestset "Exact integration" include("exact.jl")
+    @safetestset "Discrete spaces" include("spaces.jl")
+    @safetestset "Tensor-product spaces" include("tensorspaces.jl")
+    @safetestset "Polar spaces" include("polarspaces.jl")
+    @safetestset "Pullback" include("pullback.jl")
+    @safetestset "Brackets" include("brackets.jl")
+    @safetestset "Arakawa" include("arakawa.jl")
+    @safetestset "Metric brackets" include("metricbrackets.jl")
+    @safetestset "Collision brackets" include("collisionbrackets.jl")
+    @safetestset "Lie algebras" include("algebras.jl")
+    @safetestset "Torus" include("torus.jl")
+    @safetestset "Four-brackets" include("fourbrackets.jl")
+    @safetestset "Metriplectic" include("metriplectic.jl")
+    @safetestset "Dirac" include("dirac.jl")
+    @safetestset "Hamiltonians" include("hamiltonians.jl")
+    @safetestset "Flows" include("flows.jl")
+    @safetestset "Metriplectic flows" include("metriplecticflows.jl")
+    @safetestset "KdV" include("equations/kdv.jl")
+    @safetestset "Miura" include("miura.jl")
+    @safetestset "Burgers" include("equations/burgers.jl")
+    @safetestset "Camassa-Holm" include("equations/camassaholm.jl")
+    @safetestset "Diagnostics" include("diagnostics.jl")
+end
+if "slow" in GROUPS
+    @safetestset "Integrators" include("integrators.jl")
+    @safetestset "Doctests" include("quality/doctests.jl")
+end
