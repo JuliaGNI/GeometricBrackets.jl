@@ -21,7 +21,6 @@ if "core" in GROUPS
     @safetestset "Hamiltonians" include("hamiltonians.jl")
     @safetestset "Flows" include("flows.jl")
     @safetestset "Metriplectic flows" include("metriplecticflows.jl")
-    @safetestset "Integrators" include("integrators.jl")
     @safetestset "KdV" include("equations/kdv.jl")
     @safetestset "Miura" include("miura.jl")
     @safetestset "Burgers" include("equations/burgers.jl")
@@ -29,5 +28,6 @@ if "core" in GROUPS
     @safetestset "Diagnostics" include("diagnostics.jl")
 end
 if "slow" in GROUPS
+    @safetestset "Integrators" include("integrators.jl")
     @safetestset "Doctests" include("quality/doctests.jl")
 end
