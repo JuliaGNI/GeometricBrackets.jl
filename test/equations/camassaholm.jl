@@ -4,6 +4,8 @@ using Random
 using SimpleSplines: UniformMesh, RandomMesh
 using Test
 
+Random.seed!(0x5c1e9a3b)
+
 # Camassa-Holm is a PROTOTYPE: it accompanies no manuscript. These tests assert the same
 # structural properties as for KdV, and nothing beyond them.
 

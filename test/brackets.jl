@@ -4,6 +4,14 @@ using Random
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh
 using Test
 
+include("helpers/meshes.jl")
+
+# Several tests excite the full spectrum with random degrees of freedom, which is deliberate: a
+# cross-conservation identity tested on a single smooth mode reports round-off and hides the
+# cubic obstruction entirely. The seed is fixed so that a failure is reproducible; every test file
+# that draws from the global generator sets the same seed.
+Random.seed!(0x5c1e9a3b)
+
 @testset "$(rpad("Discrete Bracket Tests",80))" begin
     @testset "$(rpad("constant bracket is antisymmetric and exactly Poisson",76))" begin
         for (nm, mk) in SPLINE_MESHES, N in (12, 16)

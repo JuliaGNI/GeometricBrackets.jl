@@ -208,7 +208,7 @@ second way, at a **fixed rational point with no RNG on either side**: the reduce
 ``16134943910670/117497863``, ``\det C = 10490880625/50176``, the structure-constant residual
 ``10368/49``, and the broken-hierarchical mass entry ``M_{11} = 4/15`` all matched digit for
 digit. That last one pins the exact shifted-Legendre and Lagrange assembly against the SymPy
-version it replaces, and it is now a regression test in `test/dirac_tests.jl`. See
+version it replaces, and it is now a regression test in `test/dirac.jl`. See
 [Verification](@ref).
 
 ## Reference

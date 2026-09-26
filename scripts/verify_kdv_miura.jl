@@ -21,7 +21,7 @@
 #       integrator of the second structure.
 #
 # The chart machinery comes from the package -- `miura_map`, `miura_invert`, `hill_lambda0`,
-# `miura_lambda` and `kdv_miura_bracket` are what `test/miura_tests.jl` exercises.
+# `miura_lambda` and `kdv_miura_bracket` are what `test/miura.jl` exercises.
 
 using GeometricBrackets
 using LinearAlgebra

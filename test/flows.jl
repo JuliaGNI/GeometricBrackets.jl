@@ -4,6 +4,10 @@ using Random
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh
 using Test
 
+include("helpers/meshes.jl")
+
+Random.seed!(0x5c1e9a3b)
+
 @testset "$(rpad("Hamiltonian Flow Tests",80))" begin
     @testset "$(rpad("vectorfield is the bracket contracted with the gradient",76))" begin
         s = SplineSpace(12, 3)

@@ -2,11 +2,12 @@ using GeometricBrackets
 using LinearAlgebra
 using SimpleSplines: UniformMesh, GradedMesh, RandomMesh, MassOperator
 using SparseArrays
+using Random
 using Test
 
-const SPLINE_MESHES = ((:uniform, n -> UniformMesh(n, 2π)),
-    (:graded, n -> GradedMesh(n, 2π)),
-    (:random, n -> RandomMesh(n, 2π)))
+include("helpers/meshes.jl")
+
+Random.seed!(0x5c1e9a3b)
 
 @testset "$(rpad("Discrete Space Tests",80))" begin
     @testset "$(rpad("spline space accessors",76))" begin

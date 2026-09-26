@@ -210,7 +210,7 @@ once per step, and at the step counts these runs reach it is a third of the tota
     convention was flipped, leaving one copy stale made implicit midpoint report a 373 % drift
     in a quantity the flow conserves exactly. A sign that moves in one copy and not the other is
     invisible to every *structural* test and shows up only as a drift, which is why
-    `test/diagnostics_tests.jl` holds the fused values against the individual Hamiltonians.
+    `test/diagnostics.jl` holds the fused values against the individual Hamiltonians.
 
 [`invariants`](@ref) of a [`MiuraSystem`](@ref) reports **in ``u``**: the state is ``\hat{v}``,
 so the map through [`miura_map`](@ref) comes first and a Miura run can be compared directly

@@ -175,7 +175,7 @@ directly against `diractools.py` and `femtools.py`. Every value matched digit fo
 the reduced Jacobiator ``16134943910670/117497863``, ``\det C = 10490880625/50176``,
 ``\text{structure-constant residual} = 10368/49``, and the broken-hierarchical mass entry
 ``M_{11} = 4/15``. That last one pins the exact shifted-Legendre and Lagrange assembly against
-the SymPy version it replaces. It is now a regression test in `test/dirac_tests.jl`.
+the SymPy version it replaces. It is now a regression test in `test/dirac.jl`.
 
 ## Further errata found in the Python
 
@@ -192,7 +192,7 @@ the SymPy version it replaces. It is now a regression test in `test/dirac_tests.
     looks broken. Drop the symmetry of ``n`` and 200 of 200 fail.
 
     The conclusion the Python drew is right; the stated reason is not. Corrected in the
-    docstrings of `so3` and `structure_constant_residual`, and pinned by `test/algebras_tests.jl`.
+    docstrings of `so3` and `structure_constant_residual`, and pinned by `test/algebras.jl`.
   - **`common.py`'s two structure-constant residuals are not the same function.** The exact
     `structure_constant_residual` and `structure_constant_residual_float` agree precisely when
     ``C`` is antisymmetric in ``(i,j)``; off that locus one is the other evaluated at ``C``
@@ -478,7 +478,7 @@ The structural fact the refactoring exposed, and which the original's copies obs
 two-bracket **is** its four-bracket with the entropy in the second and fourth slots.
 [`gardner_2bracket`](@ref) is defined as `gardner_4bracket(g, a, s, b, s)` and
 [`symmetric_2bracket`](@ref) likewise, rather than written out a second time; and the weighted
-brackets are the symmetric densities times the weight. `test/fourbrackets_tests.jl` asserts both
+brackets are the symmetric densities times the weight. `test/fourbrackets.jl` asserts both
 identifications with `==`, not `≈`.
 
 One claim was added that the original did not make. `metriplectic_bracket` evaluates equation

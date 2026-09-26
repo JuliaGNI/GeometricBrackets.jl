@@ -4,6 +4,10 @@ using Random
 using SimpleSplines: UniformMesh, RandomMesh
 using Test
 
+include("helpers/meshes.jl")
+
+Random.seed!(0x5c1e9a3b)
+
 """Central-difference gradient, for checking the analytic ones."""
 function fd_gradient(H, s, û; h = 1e-6)
     [(hamiltonian(H, s, û .+ h .* e) - hamiltonian(H, s, û .- h .* e)) / 2h

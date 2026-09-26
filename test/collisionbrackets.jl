@@ -4,6 +4,8 @@ using Random
 using SimpleSplines: UniformMesh, Dirichlet, Free, Periodic, (..)
 using Test
 
+Random.seed!(0x5c1e9a3b)
+
 # `Q_2` from its definition, `|z|² I - z ⊗ z`. Every brute-force reference below builds the
 # kernel from this rather than from the perp identity `Q_2(z) = z^⊥ ⊗ z^⊥`, so the checks
 # test that identity and the moment expansion together instead of one rearrangement of the

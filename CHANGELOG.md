@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Test suite reorganised to mirror the `src/` directory structure, with test files in
+  `test/equations/`, `test/quality/`, etc. Each test file is a module with isolated
+  test sets via SafeTestsets, selected by test groups `core` and `slow` (chosen via
+  `ARGS`). Test dependencies (Aqua, Documenter, LinearAlgebra, Random, SafeTestsets,
+  SimpleSolvers, SimpleSplines, SparseArrays, Test) moved from `Project.toml` to
+  `test/Project.toml`, separating development dependencies from the package itself.
+  A new `test/quality/doctests.jl` runs doctest coverage. Shared test data
+  `SPLINE_MESHES` moved to `test/helpers/meshes.jl`; each test file seeds the RNG
+  independently. Total test count unchanged (1720 in 24 files, plus one new doctest
+  testset).
+
 ## [0.1.2] — 2026-09-24
 
 This patch release changes and removes API because 0.1.1 was released the same day,

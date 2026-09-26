@@ -5,7 +5,10 @@ using LinearAlgebra
 # *different* generic in the two packages. A bare `using` here makes those names ambiguous in
 # every test file included after this one, which is a failure in somebody else's testset.
 using SimpleSplines: UniformMesh, Periodic, Dirichlet, (..)
+using Random
 using Test
+
+Random.seed!(0x5c1e9a3b)
 
 @testset "$(rpad("Pullback Tests",80))" begin
 
