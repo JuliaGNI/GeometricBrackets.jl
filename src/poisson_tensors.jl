@@ -26,7 +26,8 @@ struct PoissonTensor{DT, FT}
     end
 end
 
-# a bracket that knows its grid checks it against the grid of the tensor
+# a bracket that knows its grid, as an `Arakawa` does, adds a method that checks it against the
+# grid of the tensor; any other bracket is not checked
 _check_grid(f, nx, nv) = nothing
 
 Base.size(pt::PoissonTensor) = ntuple(_ -> pt.nx * pt.nv, 3)

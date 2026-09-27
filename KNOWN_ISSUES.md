@@ -21,3 +21,10 @@ Kind: missing test. A `-` → `+` change in the `so_n` commutator of `src/algebr
 
 Kind: docs. `src/metriplectic.jl:27` names `test/metriplectic_tests.jl`, which is now
 `test/metriplectic.jl`. A test migration does not change `src/`.
+
+## KI-6 — `PoissonTensor` does not relate `DT` to the element type of its bracket
+
+Kind: defect. `src/poisson_tensors.jl:23`. `pt = PoissonTensor(Float32, 5, 3, Arakawa(5, 3, 1/5,
+2/3))` gives `typeof(pt[1, 2, 6]) == Float64`, and `PoissonOperator(pt, randn(15))` is an
+`AbstractMatrix{Float32}` whose entries are `Float64`. The fix is to throw when `DT` is not the
+element type of the `Arakawa`, or to convert it.

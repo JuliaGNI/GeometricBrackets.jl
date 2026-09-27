@@ -143,6 +143,8 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws DimensionMismatch PoissonTensor(Float64, nx + 1, nv, a)
         @test_throws DimensionMismatch PoissonTensor(Float64, nx, nv - 1, a)
         @test_throws DimensionMismatch PoissonTensor(Float64, nv, nx, a)
+        # a bracket that does not know its grid
+        @test PoissonTensor(Float64, nx, nv, (I, J, K) -> 0.0) isa PoissonTensor{Float64}
 
         # every row, including those whose first component exceeds nv
         h, f = randn(nx * nv), randn(nx * nv)
