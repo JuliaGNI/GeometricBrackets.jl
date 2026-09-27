@@ -143,6 +143,11 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws DimensionMismatch PoissonTensor(Float64, nx + 1, nv, a)
         @test_throws DimensionMismatch PoissonTensor(Float64, nx, nv - 1, a)
         @test_throws DimensionMismatch PoissonTensor(Float64, nv, nx, a)
+        # an Arakawa of another element type, in each direction
+        @test_throws ArgumentError PoissonTensor(Float32, nx, nv, a)
+        a32 = Arakawa(nx, nv, Float32(hx), Float32(hv))
+        @test PoissonTensor(Float32, nx, nv, a32)[I, J, K] isa Float32
+        @test_throws ArgumentError PoissonTensor(Float64, nx, nv, a32)
         # a bracket that does not know its grid
         @test PoissonTensor(Float64, nx, nv, (I, J, K) -> 0.0) isa PoissonTensor{Float64}
 

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PoissonTensor(DT, nx, nv, f)` throws a `DimensionMismatch` when `f` is an `Arakawa` on a
   grid other than `nx × nv`. Before, it built the tensor, and its entries were wrong with no
   error: the `Arakawa` wrapped its offsets on its own grid, not on the grid of the tensor.
+- `PoissonTensor(DT, nx, nv, f)` throws an `ArgumentError` when `f` is an `Arakawa` whose element
+  type is not `DT`. Before, `PoissonTensor(Float32, …, Arakawa{Float64})` gave `Float64` entries,
+  and a `PoissonOperator` on it was an `AbstractMatrix{Float32}` with `Float64` entries. This
+  fixes KI-6.
 
 ### Changed
 

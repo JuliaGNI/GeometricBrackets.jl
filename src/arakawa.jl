@@ -150,10 +150,12 @@ function (arakawa::Arakawa{DT})(I, J, K) where {DT}
     _coefficient(arakawa, fi, hi)
 end
 
-function _check_grid(arakawa::Arakawa, nx, nv)
+function _check_bracket(arakawa::Arakawa{AT}, DT, nx, nv) where {AT}
     (arakawa.nx, arakawa.nv) == (nx, nv) || throw(DimensionMismatch(
         "an Arakawa on a $(arakawa.nx) × $(arakawa.nv) grid gives no PoissonTensor on a " *
         "$nx × $nv grid"))
+    AT == DT || throw(ArgumentError(
+        "an Arakawa{$AT} gives no PoissonTensor{$DT}, because its coefficients are the entries"))
     return nothing
 end
 
