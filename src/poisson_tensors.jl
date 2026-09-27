@@ -12,7 +12,8 @@ The `N × N × N` tensor ``T`` of a bracket on a doubly periodic `nx × nv` grid
 `f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref) does, and
 `DT` is its element type. The tensor is lazy. It takes three `CartesianIndex`es or three linear
 indices in the order of `LinearIndices((nx, nv))`, and an index off the grid throws a
-`BoundsError`. `Array(pt)` materialises it.
+`BoundsError`. `Array(pt)` materialises it. An `Arakawa` on a grid other than `nx × nv` throws
+a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` throws an `ArgumentError`.
 """
 struct PoissonTensor{DT, FT}
     nx::Int
@@ -20,9 +21,14 @@ struct PoissonTensor{DT, FT}
     f::FT
 
     function PoissonTensor(DT, nx, nv, f)
+        _check_bracket(f, DT, nx, nv)
         new{DT, typeof(f)}(nx, nv, f)
     end
 end
+
+# a bracket that knows its grid and its element type, as an `Arakawa` does, adds a method that
+# checks them against those of the tensor; any other bracket is not checked
+_check_bracket(f, DT, nx, nv) = nothing
 
 Base.size(pt::PoissonTensor) = ntuple(_ -> pt.nx * pt.nv, 3)
 Base.size(pt::PoissonTensor, i) = i ≥ 1 && i ≤ 3 ? pt.nx * pt.nv : 1
