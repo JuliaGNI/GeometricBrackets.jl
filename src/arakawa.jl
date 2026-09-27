@@ -150,6 +150,13 @@ function (arakawa::Arakawa{DT})(I, J, K) where {DT}
     _coefficient(arakawa, fi, hi)
 end
 
+function _check_grid(arakawa::Arakawa, nx, nv)
+    (arakawa.nx, arakawa.nv) == (nx, nv) || throw(DimensionMismatch(
+        "an Arakawa on a $(arakawa.nx) × $(arakawa.nv) grid gives no PoissonTensor on a " *
+        "$nx × $nv grid"))
+    return nothing
+end
+
 ### Arakawa as a DiscreteBracket ###
 
 # A(I, J, K) vanishes unless J and K both lie in the 3 × 3 stencil around I, so the sums

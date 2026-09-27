@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `PoissonTensor(DT, nx, nv, f)` throws a `DimensionMismatch` when `f` is an `Arakawa` on a
+  grid other than `nx × nv`. Before, it built the tensor, and its entries were wrong with no
+  error: the `Arakawa` wrapped its offsets on its own grid, not on the grid of the tensor.
+
 ### Changed
 
 - Test suite reorganised to mirror the `src/` directory structure, with test files in

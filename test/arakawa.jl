@@ -139,6 +139,10 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
         @test_throws BoundsError pt[0, 1, 1]
         @test_throws BoundsError pt[1, nx * nv + 1, 1]
         @test_throws BoundsError pt[1, 1, nx * nv + 1]
+        # an Arakawa on another grid, in each direction and transposed
+        @test_throws DimensionMismatch PoissonTensor(Float64, nx + 1, nv, a)
+        @test_throws DimensionMismatch PoissonTensor(Float64, nx, nv - 1, a)
+        @test_throws DimensionMismatch PoissonTensor(Float64, nv, nx, a)
 
         # every row, including those whose first component exceeds nv
         h, f = randn(nx * nv), randn(nx * nv)
