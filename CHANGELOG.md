@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+The two `PoissonTensor` checks under *Fixed* reject input that 0.1.2 accepts, so this release is
+0.2.0. A package that builds a `PoissonTensor` from an `Arakawa` of another element type has to
+change that call before it allows 0.2.
+
 ### Fixed
 
 - `PoissonTensor(DT, nx, nv, f)` throws a `DimensionMismatch` when `f` is an `Arakawa` on a
