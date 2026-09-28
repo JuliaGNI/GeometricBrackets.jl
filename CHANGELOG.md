@@ -39,8 +39,8 @@ change that call before it allows 0.2.
   dependency that `Project.toml` also has, so the root bound is the only bound. Removed from
   `test/Project.toml`: LinearAlgebra, Random, SimpleSolvers, SimpleSplines and SparseArrays.
   Removed from `docs/Project.toml`: CairoMakie, CompactBasisFunctions and SimpleSolvers. The
-  docs environment now resolves CompactBasisFunctions and SimpleSolvers in the root's
-  ranges, `0.3, 0.4` and `0.13, 0.14`, not only 0.4.1 and 0.14.0.
+  docs environment now admits CompactBasisFunctions 0.3 and SimpleSolvers 0.13, which the
+  removed bounds `0.4.1` and `0.14.0` excluded.
 
 ## [0.1.2] — 2026-09-24
 
