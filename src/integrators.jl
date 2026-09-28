@@ -379,7 +379,7 @@ function Integrator(f::AbstractFlow{T}, method::IntegratorMethod, Δt::Real;
         Jm!(j, z, params) = mixed_jacobian!(j, method, f, params.un, z, dt, σ)
 
         newton_mixed(ls) = NewtonSolver(zeros(T, n), zeros(T, n);
-            F = Fm!, (DF!) = Jm!, refactorize = refactorize,
+            F = Fm!, var"DF!" = Jm!, refactorize = refactorize,
             jacobian_prototype = copy(proto),
             linesearch = ls,
             linear_solver_method = lsm,
@@ -395,7 +395,7 @@ function Integrator(f::AbstractFlow{T}, method::IntegratorMethod, Δt::Real;
         J!(j, x, params) = residual_jacobian!(j, method, f, params.un, x, dt)
 
         newton_dense(ls) = NewtonSolver(zeros(T, N), zeros(T, N);
-            F = F!, (DF!) = J!, refactorize = refactorize,
+            F = F!, var"DF!" = J!, refactorize = refactorize,
             linesearch = ls,
             linear_solver_method = linear_solver_method,
             f_abstol = f_abstol,

@@ -35,6 +35,11 @@ change that call before it allows 0.2.
   `SPLINE_MESHES` moved to `test/helpers/meshes.jl`; each test file that draws from the
   global random number generator seeds it itself. Total test count unchanged (1720 in 24
   files, plus one new doctest testset).
+- The two `NewtonSolver` calls in `src/integrators.jl` spell the Jacobian keyword as
+  `var"DF!" = …` in place of `(DF!) = …`. Both forms parse to the same call, so the behaviour
+  does not change; fatou reads the old form as an unused local binding. `maximal_second_class`
+  iterates `eachindex(rest)` and `(ia + 1):lastindex(rest)` in place of `1:length(rest)` ranges,
+  with the same pairs in the same order.
 
 ## [0.1.2] — 2026-09-24
 
