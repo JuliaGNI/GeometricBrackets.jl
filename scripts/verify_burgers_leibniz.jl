@@ -103,6 +103,7 @@ println("   general solution: [",
 # than cast. Degree two, in ubar, is the whole claim.
 ok = any(sols) do s
     expr = expand(simplify(s.rhs()))
+    # fatou-ignore redundant-boolean
     expr.is_polynomial(ubar) == true && sympy.degree(expr, ubar) == 2
 end
 check("the solution is a quadratic in ubar, i.e. ubar = sqrt(u) up to an affine map", ok)
