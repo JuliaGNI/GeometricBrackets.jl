@@ -35,6 +35,12 @@ change that call before it allows 0.2.
   `SPLINE_MESHES` moved to `test/helpers/meshes.jl`; each test file that draws from the
   global random number generator seeds it itself. Total test count unchanged (1720 in 24
   files, plus one new doctest testset).
+- `test/Project.toml` and `docs/Project.toml` no longer carry a `[compat]` entry for a
+  dependency that `Project.toml` also has, so the root bound is the only bound. Removed from
+  `test/Project.toml`: LinearAlgebra, Random, SimpleSolvers, SimpleSplines and SparseArrays.
+  Removed from `docs/Project.toml`: CairoMakie, CompactBasisFunctions and SimpleSolvers. The
+  docs environment now admits CompactBasisFunctions 0.3 and 0.4.0 and SimpleSolvers 0.13, which the
+  removed bounds `0.4.1` and `0.14.0` excluded.
 
 ## [0.1.2] — 2026-09-24
 
