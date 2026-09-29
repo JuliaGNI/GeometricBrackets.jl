@@ -64,8 +64,6 @@ using Test
     end
 
     @testset "$(rpad("the assembly entry points agree with their definitions",76))" begin
-        w = quadrature_weights(s)
-        Φ = basis_values(s, (0, 0))
         @test mixed_matrix(s, (0, 0), (0, 0)) ≈ mass_matrix(s)
         @test weighted_matrix(s, x -> 1.0, (0, 0), (0, 0)) ≈ mass_matrix(s)
         @test weighted_matrix(s, ones(Q), (0, 0), (0, 0)) ≈ mass_matrix(s)

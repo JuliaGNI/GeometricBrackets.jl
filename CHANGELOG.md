@@ -23,6 +23,8 @@ change that call before it allows 0.2.
 
 ### Changed
 
+- Three unused bindings in the tests are deleted: `ū` in `test/equations/burgers.jl`, and `w`
+  and `Φ` in `test/polarspaces.jl`. No test and no behaviour changes.
 - Test suite reorganised to mirror the `src/` directory structure, with test files in
   `test/equations/`, `test/quality/`, etc. Each test file is a module with isolated
   test sets via SafeTestsets, selected by test groups `core` and `slow` (chosen via
