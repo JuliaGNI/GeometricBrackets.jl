@@ -101,7 +101,6 @@ dudx(x) = cos(x) - 0.6sin(2x)
         sys = BurgersSystem(s)
         udot = vectorfield(sys.flow, u)                      # u-space, reproduces 3 u u_x
 
-        ū = GeometricBrackets.to_sqrt_variables(u)
         # d(√u)/dt = u̇ / (2√u), the pushforward of the u-space field
         ūdot = udot ./ (2 .* sqrt.(u))
         # ∂H/∂ū_i = 2 √u_i (M u)_i
