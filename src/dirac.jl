@@ -275,7 +275,7 @@ function maximal_second_class(J::AbstractMatrix{T}, con; tol = nothing) where {T
     rest = collect(con)
     while true
         grew = false
-        for ia in 1:length(rest), ib in (ia + 1):length(rest)
+        for ia in eachindex(rest), ib in (ia + 1):lastindex(rest)
 
             trial = vcat(sel, rest[ia], rest[ib])
             if _nonsingular(J[trial, trial], atol)

@@ -41,6 +41,11 @@ change that call before it allows 0.2.
   Removed from `docs/Project.toml`: CairoMakie, CompactBasisFunctions and SimpleSolvers. The
   docs environment now admits CompactBasisFunctions 0.3 and 0.4.0 and SimpleSolvers 0.13, which the
   removed bounds `0.4.1` and `0.14.0` excluded.
+- The two `NewtonSolver` calls in `src/integrators.jl` spell the Jacobian keyword as
+  `var"DF!" = …` in place of `(DF!) = …`. Both forms parse to the same call, so the behaviour
+  does not change; fatou reads the old form as an unused local binding. `maximal_second_class`
+  iterates `eachindex(rest)` and `(ia + 1):lastindex(rest)` in place of `1:length(rest)` ranges,
+  with the same pairs in the same order.
 
 ## [0.1.2] — 2026-09-24
 
