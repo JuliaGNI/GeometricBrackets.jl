@@ -23,6 +23,9 @@ change that call before it allows 0.2.
 
 ### Changed
 
+- The floors rise to GeometricBase 0.15.0, CompactBasisFunctions 0.4.2, QuadratureRules 0.2.2,
+  SimpleSolvers 0.14.1 and SimpleSplines 0.3.1, because GeometricBase 0.15 declares its stubs
+  public and requires Julia 1.11.
 - Three unused bindings in the tests are deleted: `ū` in `test/equations/burgers.jl`, and `w`
   and `Φ` in `test/polarspaces.jl`. No test and no behaviour changes.
 - Test suite reorganised to mirror the `src/` directory structure, with test files in
@@ -40,9 +43,7 @@ change that call before it allows 0.2.
 - `test/Project.toml` and `docs/Project.toml` no longer carry a `[compat]` entry for a
   dependency that `Project.toml` also has, so the root bound is the only bound. Removed from
   `test/Project.toml`: LinearAlgebra, Random, SimpleSolvers, SimpleSplines and SparseArrays.
-  Removed from `docs/Project.toml`: CairoMakie, CompactBasisFunctions and SimpleSolvers. The
-  docs environment now admits CompactBasisFunctions 0.3 and 0.4.0 and SimpleSolvers 0.13, which the
-  removed bounds `0.4.1` and `0.14.0` excluded.
+  Removed from `docs/Project.toml`: CairoMakie, CompactBasisFunctions and SimpleSolvers.
 - The two `NewtonSolver` calls in `src/integrators.jl` spell the Jacobian keyword as
   `var"DF!" = …` in place of `(DF!) = …`. Both forms parse to the same call, so the behaviour
   does not change; fatou reads the old form as an unused local binding. `maximal_second_class`
