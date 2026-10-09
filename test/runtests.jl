@@ -29,5 +29,7 @@ if "core" in GROUPS
 end
 if "slow" in GROUPS
     @safetestset "Integrators" include("integrators.jl")
+end
+if "doctests" in GROUPS
     @safetestset "Doctests" include("quality/doctests.jl")
 end
