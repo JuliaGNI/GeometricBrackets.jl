@@ -3,7 +3,7 @@ using LinearAlgebra
 using SimpleSplines: UniformMesh, RandomMesh
 using Test
 
-include("helpers/meshes.jl")
+include("../helpers/meshes.jl")
 
 @testset "$(rpad("Miura Tests",80))" begin
     @testset "$(rpad("the mass identity int u_h = -int v_h^2 is EXACT",76))" begin

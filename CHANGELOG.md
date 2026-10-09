@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Pkg.test()` no longer runs the doctests. `test/quality/doctests.jl` is now the group
   `doctests`, which an empty `ARGS` does not run; `Pkg.test(test_args = ["doctests"])` runs it.
   In CI the Doctests job stays their runner, so the test matrix no longer runs them a second time.
+- `test/miura.jl` moved to `test/integration/miura.jl`. It tests the Miura chart across
+  `src/brackets.jl`, `src/equations/kdv.jl`, `src/integrators.jl` and `src/diagnostics.jl`, and
+  the test convention keeps a test file at the top level of `test/` only where it mirrors
+  `src/<name>.jl`.
 
 ## [0.2.0] — 2026-10-03
 
