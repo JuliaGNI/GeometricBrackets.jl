@@ -5,7 +5,7 @@
 - **location:** `src/integrators.jl`
 - **evidence:** `mutate.jl <pkg> src/integrators.jl 'k4 = vectorfield(f, û .+ Δt .* k3)'
   'k4 = vectorfield(f, û .+ Δt .* k2)'` SURVIVED against `integrators.jl`, and against
-  `equations/kdv.jl`, `metriplecticflows.jl` and `miura.jl` together. The fix is an RK4
+  `equations/kdv.jl`, `metriplecticflows.jl` and `integration/miura.jl` together. The fix is an RK4
   order-of-convergence check.
 - **kind:** missing test
 - **found:** #22

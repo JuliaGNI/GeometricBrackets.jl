@@ -22,7 +22,7 @@ if "core" in GROUPS
     @safetestset "Flows" include("flows.jl")
     @safetestset "Metriplectic flows" include("metriplecticflows.jl")
     @safetestset "KdV" include("equations/kdv.jl")
-    @safetestset "Miura" include("miura.jl")
+    @safetestset "Miura" include("integration/miura.jl")
     @safetestset "Burgers" include("equations/burgers.jl")
     @safetestset "Camassa-Holm" include("equations/camassaholm.jl")
     @safetestset "Diagnostics" include("diagnostics.jl")
