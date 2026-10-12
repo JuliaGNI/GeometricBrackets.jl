@@ -12,7 +12,7 @@ A bracket as a rank-3 tensor, the `N × N × N` array ``T`` of
 
 with the interface of a [`DiscreteBracket`](@ref) — [`poisson_matrix`](@ref),
 [`poisson_apply`](@ref) and [`poisson_derivative`](@ref) — and no index arithmetic of its own:
-the tensor it wraps carries the grid, the stencil and the element type.
+the tensor it wraps carries the element type and, when it is a `GridTensor`, the grid and stencil.
 
 `PoissonTensor(T)` wraps any rank-3 array whose three extents agree; an array whose extents differ
 throws a `DimensionMismatch`. `PoissonTensor(DT, nx, nv, f)` builds the tensor of a bracket
