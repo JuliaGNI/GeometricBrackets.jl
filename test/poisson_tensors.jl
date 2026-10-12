@@ -4,14 +4,13 @@ using GeometricBrackets: Arakawa, DiscreteBracket, PoissonOperator, PoissonTenso
                          poisson_apply,
                          poisson_derivative, poisson_matrix, random_antisymmetric_c, se3,
                          _nx, _nv
-import MultiIndexArrays
 using LinearAlgebra
-using MultiIndexArrays: GridTensor, MultiIndexLazyArray, stencil_indices
+using MultiIndexArrays: MultiIndexArrays, GridTensor, MultiIndexLazyArray, stencil_indices
 using Random
 using Test
 
 # one seeded stream for the file, drawn from by every testset
-const PIN_RNG = Xoshiro(0x6f2c81de)
+const RNG = Xoshiro(0x6f2c81de)
 
 # the grids and spacings shared with the reference generator in `test/helpers/poisson_tensor_pins.jl`
 const PIN_TYPES = (Float32, Float64)
@@ -104,7 +103,7 @@ end
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
-        û = randn(PIN_RNG, DT, N)
+        û = randn(RNG, DT, N)
         P = poisson_matrix(w, û)
         # `isantisymmetric` scales by `max(1, maximum(abs, P))`, so a zero matrix passes it
         @test maximum(abs, P) > 0
@@ -119,10 +118,10 @@ end
     for DT in PIN_TYPES
 
         # a dense tensor, antisymmetric in (J, K), with entries outside every 3 × 3 stencil
-        T = randn(PIN_RNG, DT, N, N, N)
+        T = randn(RNG, DT, N, N, N)
         T = (T .- permutedims(T, (1, 3, 2))) ./ 2
         w = PoissonTensor(T)
-        û, c, h = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, c, h = randn(RNG, DT, N), randn(RNG, DT, N), randn(RNG, DT, N)
 
         @test w isa DiscreteBracket{DT}
         @test !w.stencil
@@ -138,7 +137,7 @@ end
 
         # a tensor that is not antisymmetric in (J, K) is accepted, and reported as it is: the
         # wrapper contracts the tensor it is given, and does not skew-symmetrise it on the way
-        Ta = randn(PIN_RNG, DT, N, N, N)
+        Ta = randn(RNG, DT, N, N, N)
         wa = PoissonTensor(Ta)
         @test !isantisymmetric(wa, û)
         @test poisson_matrix(wa, û) ==
@@ -152,7 +151,6 @@ end
 
         # the parameters are the element type and the wrapped tensor, no `nx`, `nv` or `f` field
         @test fieldnames(typeof(w)) == (:tensor, :stencil)
-        @test !(:nx in fieldnames(typeof(w))) && !(:nv in fieldnames(typeof(w)))
     end
     @test PoissonTensor(se3()) isa PoissonTensor{Rational{BigInt}}
 
@@ -195,7 +193,7 @@ end
         hx, hv = DT(PIN_SPACINGS[1]), DT(PIN_SPACINGS[2])
         a = Arakawa(nx, nv, hx, hv)
         w = PoissonTensor(DT, nx, nv, a)
-        û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, c = randn(RNG, DT, N), randn(RNG, DT, N)
         @test maximum(abs, poisson_apply(w, û, c)) > 0
         @test poisson_matrix(w, û) * c ≈ poisson_apply(w, û, c) rtol = N^2 * eps(DT)
         # Arakawa's own product carries the hx hv of its structure matrix; the wrapper's does not,
@@ -213,7 +211,7 @@ end
     for DT in PIN_TYPES
         T = zeros(DT, N, N, N)
         for I in CartesianIndices((nx, nv))
-            s = collect(stencil_indices(LinearIndices((nx, nv))[I], 1, (nx, nv)))
+            s = stencil_indices(LinearIndices((nx, nv))[I], 1, (nx, nv))
             for J in s, K in s
 
                 T[LinearIndices((nx, nv))[I], J, K] = one(DT)
@@ -222,7 +220,7 @@ end
         w = wrapped(gridded(T, nx, nv), (nx, nv), DT, 1)
         @test !w.stencil
 
-        û, c, h = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, c, h = randn(RNG, DT, N), randn(RNG, DT, N), randn(RNG, DT, N)
         full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
         @test maximum(abs, full) > 0
         @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(DT)
@@ -244,7 +242,7 @@ end
         end
         @test w.stencil
 
-        û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, c = randn(RNG, DT, N), randn(RNG, DT, N)
         calls[] = 0
         Pc = poisson_apply(w, û, c)
         @test maximum(abs, Pc) > 0
@@ -258,8 +256,7 @@ end
     ng = 7
     for DT in PIN_TYPES
         T = zeros(DT, ng, ng, ng)
-        for i in 1:ng, j in collect(stencil_indices(i, 2, (ng,))),
-            k in collect(stencil_indices(i, 2, (ng,)))
+        for i in 1:ng, j in stencil_indices(i, 2, (ng,)), k in stencil_indices(i, 2, (ng,))
             T[i, j, k] = one(DT)
         end
         # nonzero at offset 2, out of reach of a width of 1
@@ -268,7 +265,7 @@ end
         @test w.stencil
         @test length(stencil_indices(w.tensor, 1)) == 5
 
-        û, c, h = randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng)
+        û, c, h = randn(RNG, DT, ng), randn(RNG, DT, ng), randn(RNG, DT, ng)
         full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:ng, K in 1:ng) for J in 1:ng]
         @test maximum(abs, full) > 0
         @test poisson_apply(w, û, c) ≈ full rtol = ng^2 * eps(DT)
@@ -290,8 +287,8 @@ end
 
 @testset "only a two-dimensional grid has extents" begin
     for DT in PIN_TYPES
-        @test_throws MethodError _nx(PoissonTensor(randn(PIN_RNG, DT, 4, 4, 4)))
-        @test_throws MethodError _nv(PoissonTensor(randn(PIN_RNG, DT, 4, 4, 4)))
+        @test_throws MethodError _nx(PoissonTensor(randn(RNG, DT, 4, 4, 4)))
+        @test_throws MethodError _nv(PoissonTensor(randn(RNG, DT, 4, 4, 4)))
         gt1 = GridTensor(
             MultiIndexLazyArray(DT, (I, J, K) -> zero(DT), (7,), (7,), (7,)), 2)
         @test_throws MethodError _nx(PoissonTensor(gt1))
@@ -304,12 +301,12 @@ end
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
-        û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, c = randn(RNG, DT, N), randn(RNG, DT, N)
         # N + 1 is longer than the grid, so an unchecked sum reads in bounds and returns a value
-        @test_throws DimensionMismatch poisson_matrix(w, randn(PIN_RNG, DT, N + 1))
-        @test_throws DimensionMismatch poisson_apply(w, randn(PIN_RNG, DT, N + 1), c)
-        @test_throws DimensionMismatch poisson_apply(w, û, randn(PIN_RNG, DT, N + 1))
-        @test_throws DimensionMismatch poisson_derivative(w, randn(PIN_RNG, DT, N + 1))
+        @test_throws DimensionMismatch poisson_matrix(w, randn(RNG, DT, N + 1))
+        @test_throws DimensionMismatch poisson_apply(w, randn(RNG, DT, N + 1), c)
+        @test_throws DimensionMismatch poisson_apply(w, û, randn(RNG, DT, N + 1))
+        @test_throws DimensionMismatch poisson_derivative(w, randn(RNG, DT, N + 1))
         # a state of the right length whose axis is 0:N-1 rather than 1:N
         @test_throws ArgumentError poisson_matrix(w, Base.IdentityUnitRange(0:(N - 1)))
         @test_throws ArgumentError poisson_apply(w, û, Base.IdentityUnitRange(0:(N - 1)))
@@ -323,14 +320,23 @@ end
         N = nx * nv
         w32 = PoissonTensor(Float32, nx, nv, arakawa(nx, nv, Float32))
         w64 = PoissonTensor(Float64, nx, nv, arakawa(nx, nv, Float64))
-        û64, c64 = randn(PIN_RNG, N), randn(PIN_RNG, N)
-        û32, c32 = randn(PIN_RNG, Float32, N), randn(PIN_RNG, Float32, N)
+        û64, c64 = randn(RNG, N), randn(RNG, N)
+        û32, c32 = randn(RNG, Float32, N), randn(RNG, Float32, N)
         @test poisson_apply(w32, û64, c64) isa Vector{Float64}
         @test eltype(poisson_matrix(w32, û64)) == Float64
         @test poisson_apply(w64, û32, c32) isa Vector{Float64}
         @test poisson_apply(w32, û32, c32) isa Vector{Float32}
         @test eltype(poisson_matrix(w32, û32)) == Float32
         @test poisson_apply(w32, û32, c64) isa Vector{Float64}
+
+        # the operator promotes the tensor's element type with the Hamiltonian's, so it neither
+        # rounds a `Float64` Hamiltonian to `Float32` nor refuses a complex one
+        full(w, h) = [sum(w[i, j, k] * h[k] for k in 1:N) for i in 1:N, j in 1:N]
+        h64, hc = randn(RNG, N), complex.(randn(RNG, N), randn(RNG, N))
+        po = PoissonOperator(w32, h64)
+        @test eltype(po) == Float64
+        @test Matrix(po) ≈ full(w32, h64) rtol = N^2 * eps(Float64)
+        @test Matrix(PoissonOperator(w64, hc)) ≈ full(w64, hc) rtol = N^2 * eps(Float64)
     end
 end
 
@@ -340,7 +346,7 @@ end
         N = nx * nv
         a = arakawa(nx, nv, DT)
         w = PoissonTensor(DT, nx, nv, a)
-        û, h = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        û, h = randn(RNG, DT, N), randn(RNG, DT, N)
 
         # the entries of the tensor itself, in the layout dP[l, i, j] of the Jacobiator
         @test poisson_derivative(w, û) == Array(w.tensor)
@@ -352,7 +358,7 @@ end
         full_h = [sum(w[i, j, k] * h[k] for k in 1:N) for i in 1:N, j in 1:N]
         @test maximum(abs, full_h) > 0
         @test Matrix(po) ≈ full_h rtol = N^2 * eps(DT)
-        @test_throws DimensionMismatch PoissonOperator(w, randn(PIN_RNG, DT, N + 1))
+        @test_throws DimensionMismatch PoissonOperator(w, randn(RNG, DT, N + 1))
         @test_throws BoundsError po[0, 1]
         @test_throws BoundsError po[1, N + 1]
     end
@@ -363,8 +369,8 @@ end
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
-        po = PoissonOperator(w, randn(PIN_RNG, DT, N))
-        û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        po = PoissonOperator(w, randn(RNG, DT, N))
+        û, c = randn(RNG, DT, N), randn(RNG, DT, N)
 
         # Constructor inference must not rely on constant propagation of the grid sizes.
         @test @inferred(PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))) isa

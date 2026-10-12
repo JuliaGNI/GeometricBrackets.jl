@@ -18,11 +18,13 @@ the tensor it wraps carries the element type and, when it is a `GridTensor`, the
 throws a `DimensionMismatch`. `PoissonTensor(DT, nx, nv, f)` builds the tensor of a bracket
 `f(I, J, K)` on a doubly periodic `nx × nv` grid, `N = nx * nv`, as a `GridTensor` of width 1 over
 that grid: `f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref)
-does, and `DT` is the element type of the entries. An `Arakawa` on a grid other than `nx × nv`
-throws a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` throws an
-`ArgumentError`.
+does, and `DT` is the element type of the entries. `f` must vanish unless `J` and `K` both lie in
+the nearest-neighbour stencil of `I`: where the sums run over that stencil, they drop every
+coefficient outside it, while `Array(pt)`, `pt[i, j, k]` and [`poisson_derivative`](@ref) keep it.
+An `Arakawa` on a grid other than `nx × nv` throws a `DimensionMismatch`, and an `Arakawa` whose
+element type is not `DT` throws an `ArgumentError`.
 
-The grid constructor takes three `CartesianIndex`es or three linear indices in the order of
+A tensor built on a grid takes three `CartesianIndex`es or three linear indices in the order of
 `LinearIndices((nx, nv))`. The wrapper assumes axes `1:N`; offset axes are neither checked nor
 claimed. An index off the grid throws a `BoundsError` and `Array(pt)` materialises the tensor.
 The sums run over the stencil of every node where the tensor is a `GridTensor` whose stencil
@@ -88,9 +90,10 @@ function _check_state(pt::PoissonTensor, û::AbstractVector)
 end
 
 function _accumulate!(P::AbstractMatrix, pt::PoissonTensor, û::AbstractVector, I::Int, inds)
+    ûI = û[I]
     for J in inds, K in inds
 
-        P[J, K] += û[I] * pt.tensor[I, J, K]
+        P[J, K] += ûI * pt.tensor[I, J, K]
     end
     return nothing
 end
@@ -144,7 +147,8 @@ nodes, with no quadrature weight. The sum runs over the stencil of each node whe
 sums may be restricted to it, which holds every nonzero coefficient of a nearest-neighbour bracket
 such as [`Arakawa`](@ref), and over the whole axis otherwise. `Matrix(po)` materialises it.
 
-`h` holds one value per node of the tensor. Any other length throws a `DimensionMismatch`.
+`h` holds one value per node of the tensor. Any other length throws a `DimensionMismatch`. The
+element type of the operator promotes the tensor's with that of `h`.
 """
 struct PoissonOperator{DT, PT, HT} <: AbstractMatrix{DT}
     tensor::PT
@@ -155,28 +159,27 @@ struct PoissonOperator{DT, PT, HT} <: AbstractMatrix{DT}
         length(h) == N || throw(DimensionMismatch(
             "a PoissonOperator of a tensor of $N nodes in each direction needs a Hamiltonian " *
             "of length $N, got $(length(h))"))
-        new{DT, typeof(tensor), HT}(tensor, h)
+        new{promote_type(DT, eltype(h)), typeof(tensor), HT}(tensor, h)
     end
 end
 
 Base.size(po::PoissonOperator) = (size(po.tensor, 1), size(po.tensor, 2))
 Base.size(po::PoissonOperator, i) = size(po)[i]
 
-# The extents a `PoissonTensor` wraps, which are the grid of the `GridTensor` it holds. Only a
-# tensor on a two-dimensional grid has them: a dense array, and a grid of another dimension, raise
-# a `MethodError` here rather than answer with the number of nodes in one direction.
-const _Wrapped2DGrid{DT} = PoissonTensor{DT,
-    <:GridTensor{DT, 3,
-        <:MultiIndexLazyArray{DT, 3,
-            <:Any, <:NTuple{3, MultiIndexAxis{2}}}}}
+# The extents of the grid of the `GridTensor` a `PoissonTensor` wraps. Only a tensor on a
+# two-dimensional grid has them: a dense array, and a grid of another dimension, raise a
+# `MethodError` here rather than answer with the number of nodes in one direction.
+_grid(pt::PoissonTensor{<:Any, <:GridTensor}) = _grid(axes(parent(pt.tensor), 1))
+_grid(ax::MultiIndexAxis{2}) = size(ax)
 
-_nx(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[1]
-_nv(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[2]
+_nx(pt::PoissonTensor) = _grid(pt)[1]
+_nv(pt::PoissonTensor) = _grid(pt)[2]
 
 _nx(t::PoissonOperator) = _nx(t.tensor)
 _nv(t::PoissonOperator) = _nv(t.tensor)
 
-function _entry(pt::PoissonTensor{DT}, h::AbstractVector, i::Int, j::Int, inds) where {DT}
+function _entry(
+        ::Type{DT}, pt::PoissonTensor, h::AbstractVector, i::Int, j::Int, inds) where {DT}
     x = zero(DT)
     for K in inds
         x += pt.tensor[i, j, K] * h[K]
@@ -184,7 +187,7 @@ function _entry(pt::PoissonTensor{DT}, h::AbstractVector, i::Int, j::Int, inds) 
     return x
 end
 
-function Base.getindex(po::PoissonOperator, i::Int, j::Int)
+function Base.getindex(po::PoissonOperator{DT}, i::Int, j::Int) where {DT}
     checkbounds(po, i, j)
-    return _entry(po.tensor, po.hamiltonian, i, j, _indices(po.tensor, i))
+    return _entry(DT, po.tensor, po.hamiltonian, i, j, _indices(po.tensor, i))
 end

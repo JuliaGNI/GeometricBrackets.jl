@@ -43,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   precompile on Julia 1.13. A user who pins CairoMakie 0.12 alongside this package now gets a
   resolver error rather than a precompilation failure.
 
+### Fixed
+
+- `PoissonOperator(tensor, h)` has the element type `promote_type(eltype(tensor), eltype(h))`. In
+  0.2.0 it took the tensor's element type alone, so a `Float32` tensor with a `Float64` Hamiltonian
+  made `Matrix(po)` a `Float32` matrix that rounded the Hamiltonian's values, and a `Float64` tensor
+  with a complex Hamiltonian made `Matrix(po)` throw `InexactError`. `Matrix(po)` now has the
+  promoted type.
+
 ## [0.2.0] — 2026-10-03
 
 The two `PoissonTensor` checks under *Breaking Changes* reject input that 0.1.2 accepts, so this
