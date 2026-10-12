@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PoissonTensor(DT, nx, nv, f)` still builds the tensor of a bracket on an `nx × nv` grid. The
   change is breaking: `PoissonTensor{DT, Arakawa{DT}}` no longer forms, because an `Arakawa` is not
   an `AbstractArray{DT, 3}`; `PoissonTensor{Float64, Arakawa{Float64}}` throws a `TypeError`.
+  `PoissonTensor(tensor)` takes a rank-3 array whose three extents agree and whose axes are `1:N`.
+  An array whose extents differ throws a `DimensionMismatch`, and one with offset axes an
+  `ArgumentError`.
 - `PoissonOperator` sums over the stencil of the tensor it is given, not a fixed 3 × 3 loop, so
   it follows the locality of that tensor.
 - MultiIndexArrays is a dependency again, for the `GridTensor` that a `PoissonTensor` wraps.

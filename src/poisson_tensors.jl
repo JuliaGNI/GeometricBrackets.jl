@@ -14,22 +14,22 @@ with the interface of a [`DiscreteBracket`](@ref) — [`poisson_matrix`](@ref),
 [`poisson_apply`](@ref) and [`poisson_derivative`](@ref) — and no index arithmetic of its own:
 the tensor it wraps carries the element type and, when it is a `GridTensor`, the grid and stencil.
 
-`PoissonTensor(T)` wraps any rank-3 array whose three extents agree; an array whose extents differ
-throws a `DimensionMismatch`. `PoissonTensor(DT, nx, nv, f)` builds the tensor of a bracket
-`f(I, J, K)` on a doubly periodic `nx × nv` grid, `N = nx * nv`, as a `GridTensor` of width 1 over
-that grid: `f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref)
-does, and `DT` is the element type of the entries. `f` must vanish unless `J` and `K` both lie in
-the nearest-neighbour stencil of `I`: where the sums run over that stencil, they drop every
-coefficient outside it, while `Array(pt)`, `pt[i, j, k]` and [`poisson_derivative`](@ref) keep it.
-An `Arakawa` on a grid other than `nx × nv` throws a `DimensionMismatch`, and an `Arakawa` whose
+`PoissonTensor(T)` wraps any rank-3 array whose three extents agree and whose axes are `1:N`; an
+array whose extents differ throws a `DimensionMismatch`, and an array with offset axes an
+`ArgumentError`. `PoissonTensor(DT, nx, nv, f)` builds the tensor of a bracket `f(I, J, K)` on a
+doubly periodic `nx × nv` grid, `N = nx * nv`, as a `GridTensor` of width 1 over that grid:
+`f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref) does, and
+`DT` is the element type of the entries. `f` must vanish unless `J` and `K` both lie in the
+nearest-neighbour stencil of `I`: where the sums run over that stencil, they drop every coefficient
+outside it, while `Array(pt)`, `pt[i, j, k]` and [`poisson_derivative`](@ref) keep it. An
+`Arakawa` on a grid other than `nx × nv` throws a `DimensionMismatch`, and an `Arakawa` whose
 element type is not `DT` throws an `ArgumentError`.
 
 A tensor built on a grid takes three `CartesianIndex`es or three linear indices in the order of
-`LinearIndices((nx, nv))`. The wrapper assumes axes `1:N`; offset axes are neither checked nor
-claimed. An index off the grid throws a `BoundsError` and `Array(pt)` materialises the tensor.
-The sums run over the stencil of every node where the tensor is a `GridTensor` whose stencil
-names no node twice, and over the whole axis otherwise. Matrix-free application of a
-nearest-neighbour bracket is linear in the number of nodes.
+`LinearIndices((nx, nv))`. An index off the grid throws a `BoundsError` and `Array(pt)`
+materialises the tensor. The sums run over the stencil of every node where the tensor is a
+`GridTensor` whose stencil names no node twice, and over the whole axis otherwise. Matrix-free
+application of a nearest-neighbour bracket is linear in the number of nodes.
 
 The entries have the element type `DT`. [`poisson_matrix`](@ref) promotes `DT` with the state's
 element type; [`poisson_apply`](@ref) also includes the element type of the vector it multiplies.
@@ -42,6 +42,7 @@ struct PoissonTensor{DT, TT <: AbstractArray{DT, 3}} <: DiscreteBracket{DT}
         size(tensor, 1) == size(tensor, 2) == size(tensor, 3) || throw(DimensionMismatch(
             "a PoissonTensor is an N × N × N tensor, but the extents of this one are " *
             "$(size(tensor))"))
+        Base.require_one_based_indexing(tensor)
         new{DT, typeof(tensor)}(tensor, _stencil(tensor))
     end
 end

@@ -12,23 +12,16 @@ using Test
 # one seeded stream for the file, drawn from by every testset
 const RNG = Xoshiro(0x6f2c81de)
 
-# the grids and spacings shared with the reference generator in `test/helpers/poisson_tensor_pins.jl`
-const PIN_TYPES = (Float32, Float64)
-const PIN_GRIDS = ((3, 4), (4, 5))
-const PIN_SPACINGS = (0.7, 1.3)
+# The grids are non-square, so an `nx`/`nv` swap shows on them. Neither spacing is a power of two,
+# so the coefficients are rounded.
+const TYPES = (Float32, Float64)
+const GRIDS = ((3, 4), (4, 5))
+const SPACINGS = (0.7, 1.3)
 
-"""
-The entries of `Array(pt)` of GeometricBrackets 0.1.2, as `test/data/` holds them: one line
-`i j k value` per nonzero entry. `split` drops the `\\r` of a CRLF checkout, as on windows-latest,
-and `parse` of the shortest representation of a float is exact.
-"""
-function pin(DT, nx, nv)
-    T = zeros(DT, nx * nv, nx * nv, nx * nv)
-    for line in eachline(joinpath(@__DIR__, "data", "poisson_tensor_$(DT)_$(nx)x$(nv).txt"))
-        i, j, k, value = split(line)
-        T[parse(Int, i), parse(Int, j), parse(Int, k)] = parse(DT, value)
-    end
-    return T
+"the `N × N × N` coefficients of the bracket `f` on the `nx × nv` grid, in linear-index order"
+function coefficients(f, nx, nv)
+    g = CartesianIndices((nx, nv))
+    return reshape([f(I, J, K) for I in g, J in g, K in g], nx * nv, nx * nv, nx * nv)
 end
 
 # `f(x)` with the bytes it allocates after one warm call, through a fixed-arity barrier whose
@@ -41,7 +34,7 @@ function allocations(f::F, a::A, b::B, c::C, d::D) where {F, A, B, C, D}
 end
 
 "the Arakawa of a test grid at the reference spacings"
-arakawa(nx, nv, DT) = Arakawa(nx, nv, DT(PIN_SPACINGS[1]), DT(PIN_SPACINGS[2]))
+arakawa(nx, nv, DT) = Arakawa(nx, nv, DT(SPACINGS[1]), DT(SPACINGS[2]))
 
 "the tensor of a coefficient `f` over a grid of `extents`, with the stencil width `w`"
 function wrapped(f, extents, DT, w)
@@ -51,24 +44,32 @@ function wrapped(f, extents, DT, w)
     return PoissonTensor(gt)
 end
 
+"an `n × n × n` array of zeros on the offset axes `0:(n - 1)`"
+struct OffsetZeros{T} <: AbstractArray{T, 3}
+    n::Int
+end
+Base.axes(a::OffsetZeros) = ntuple(_ -> Base.IdentityUnitRange(0:(a.n - 1)), 3)
+Base.size(a::OffsetZeros) = (a.n, a.n, a.n)
+Base.getindex(::OffsetZeros{T}, ::Int, ::Int, ::Int) where {T} = zero(T)
+
 "the entries of a coefficient table `T`, linear-indexed, as a function over the grid"
 gridded(T, nx, nv) =
     let li = LinearIndices((nx, nv))
         (I, J, K) -> T[li[I], li[J], li[K]]
     end
 
-@testset "the wrapper reproduces the entries of GeometricBrackets 0.1.2" begin
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+@testset "the wrapper reproduces the coefficients of the bracket it wraps" begin
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
-        ref = pin(DT, nx, nv)
+        ref = coefficients(arakawa(nx, nv, DT), nx, nv)
 
         @test w isa PoissonTensor{DT}
         @test w isa DiscreteBracket{DT}
         @test eltype(w) == DT
         @test size(w) == (N, N, N)
-        # the pinned tensor entries, to the last bit, and the lazy stencil of width 1
+        # the coefficients, to the last bit, and the lazy stencil of width 1
         @test Array(w) == ref
         @test w.stencil
 
@@ -99,7 +100,7 @@ gridded(T, nx, nv) =
 end
 
 @testset "the wrapper is antisymmetric, and the check is not vacuous" begin
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
@@ -115,7 +116,7 @@ end
 
 @testset "a tensor that is not a GridTensor wraps too" begin
     N = 12
-    for DT in PIN_TYPES
+    for DT in TYPES
 
         # a dense tensor, antisymmetric in (J, K), with entries outside every 3 × 3 stencil
         T = randn(RNG, DT, N, N, N)
@@ -146,7 +147,7 @@ end
 end
 
 @testset "the type boundary holds, and nothing of MultiIndexArrays leaks" begin
-    for DT in PIN_TYPES
+    for DT in TYPES
         w = PoissonTensor(DT, 3, 4, arakawa(3, 4, DT))
 
         # the parameters are the element type and the wrapped tensor, no `nx`, `nv` or `f` field
@@ -178,7 +179,7 @@ end
 
     # These structure constants are exact in both precisions, and their Jacobiator terms cancel.
     # The contractions sum in the same ascending `I`, so their entrywise comparison is exact.
-    for DT in PIN_TYPES
+    for DT in TYPES
         zDT = DT.(z)
         CD, CbadD = DT.(C), DT.(Cbad)
         @test poisson_matrix(PoissonTensor(CD), zDT) == lie_poisson_matrix(CD, zDT)
@@ -187,10 +188,10 @@ end
         @test jacobi_residual(PoissonTensor(CbadD), zDT) != 0
     end
 
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
-        hx, hv = DT(PIN_SPACINGS[1]), DT(PIN_SPACINGS[2])
+        hx, hv = DT(SPACINGS[1]), DT(SPACINGS[2])
         a = Arakawa(nx, nv, hx, hv)
         w = PoissonTensor(DT, nx, nv, a)
         û, c = randn(RNG, DT, N), randn(RNG, DT, N)
@@ -208,7 +209,7 @@ end
     # twice and the sums may not be restricted to it
     nx, nv = 2, 5
     N = nx * nv
-    for DT in PIN_TYPES
+    for DT in TYPES
         T = zeros(DT, N, N, N)
         for I in CartesianIndices((nx, nv))
             s = stencil_indices(LinearIndices((nx, nv))[I], 1, (nx, nv))
@@ -233,7 +234,7 @@ end
 @testset "the sums are restricted to the stencil where it does not repeat" begin
     nx, nv = 4, 5
     N = nx * nv
-    for DT in PIN_TYPES
+    for DT in TYPES
         calls = Ref(0)
         a = arakawa(nx, nv, DT)
         w = wrapped((nx, nv), DT, 1) do I, J, K
@@ -254,7 +255,7 @@ end
 @testset "the width comes from the tensor, not from a fixed -1:1" begin
     # a 1-D grid of 7 nodes at width 2, whose coefficients are nonzero at offset 2
     ng = 7
-    for DT in PIN_TYPES
+    for DT in TYPES
         T = zeros(DT, ng, ng, ng)
         for i in 1:ng, j in stencil_indices(i, 2, (ng,)), k in stencil_indices(i, 2, (ng,))
             T[i, j, k] = one(DT)
@@ -275,18 +276,20 @@ end
 end
 
 @testset "the extents of the tensor and its rank are checked" begin
-    for DT in PIN_TYPES
+    for DT in TYPES
         @test_throws DimensionMismatch PoissonTensor(zeros(DT, 3, 3, 4))
         @test_throws DimensionMismatch PoissonTensor(zeros(DT, 3, 4, 3))
         @test_throws DimensionMismatch PoissonTensor(zeros(DT, 4, 3, 3))
         # an array of another rank is not a tensor of this kind at all
         @test_throws MethodError PoissonTensor(zeros(DT, 3, 3))
         @test_throws MethodError PoissonTensor(zeros(DT, 3, 3, 3, 3))
+        # equal extents on the axes 0:2 rather than 1:3
+        @test_throws ArgumentError PoissonTensor(OffsetZeros{DT}(3))
     end
 end
 
 @testset "only a two-dimensional grid has extents" begin
-    for DT in PIN_TYPES
+    for DT in TYPES
         @test_throws MethodError _nx(PoissonTensor(randn(RNG, DT, 4, 4, 4)))
         @test_throws MethodError _nv(PoissonTensor(randn(RNG, DT, 4, 4, 4)))
         gt1 = GridTensor(
@@ -297,7 +300,7 @@ end
 end
 
 @testset "the states of a bracket are checked" begin
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
@@ -316,7 +319,7 @@ end
 end
 
 @testset "the result's element type is the promoted one" begin
-    for (nx, nv) in PIN_GRIDS
+    for (nx, nv) in GRIDS
         N = nx * nv
         w32 = PoissonTensor(Float32, nx, nv, arakawa(nx, nv, Float32))
         w64 = PoissonTensor(Float64, nx, nv, arakawa(nx, nv, Float64))
@@ -341,7 +344,7 @@ end
 end
 
 @testset "the derivative tensor and the operator of a wrapped tensor" begin
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
         a = arakawa(nx, nv, DT)
@@ -365,7 +368,7 @@ end
 end
 
 @testset "indexing and an operator entry are inferred and allocate nothing" begin
-    for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
+    for DT in TYPES, (nx, nv) in GRIDS
 
         N = nx * nv
         w = PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))
