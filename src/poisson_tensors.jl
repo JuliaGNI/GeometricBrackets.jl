@@ -1,53 +1,135 @@
 ### Poisson Tensor
 
 @doc raw"""
+    PoissonTensor(tensor::AbstractArray{DT, 3})
     PoissonTensor(DT, nx, nv, f)
 
-The `N × N × N` tensor ``T`` of a bracket on a doubly periodic `nx × nv` grid, `N = nx * nv`,
+A bracket as a rank-3 tensor, the `N × N × N` array ``T`` of
 
 ```math
-[g, h]_I = \sum_{J, K} T_{IJK} \, g_J \, h_K .
+[g, h]_I = \sum_{J, K} T_{IJK} \, g_J \, h_K ,
 ```
 
-`f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref) does, and
-`DT` is its element type. The tensor is lazy. It takes three `CartesianIndex`es or three linear
-indices in the order of `LinearIndices((nx, nv))`, and an index off the grid throws a
-`BoundsError`. `Array(pt)` materialises it. An `Arakawa` on a grid other than `nx × nv` throws
-a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` throws an `ArgumentError`.
-"""
-struct PoissonTensor{DT, FT}
-    nx::Int
-    nv::Int
-    f::FT
+with the interface of a [`DiscreteBracket`](@ref) — [`poisson_matrix`](@ref),
+[`poisson_apply`](@ref) and [`poisson_derivative`](@ref) — and no index arithmetic of its own:
+the tensor it wraps carries the grid, the stencil and the element type.
 
-    function PoissonTensor(DT, nx, nv, f)
-        _check_bracket(f, DT, nx, nv)
-        new{DT, typeof(f)}(nx, nv, f)
+`PoissonTensor(T)` wraps any rank-3 array whose three extents agree; an array whose extents differ
+throws a `DimensionMismatch`. `PoissonTensor(DT, nx, nv, f)` builds the tensor of a bracket
+`f(I, J, K)` on a doubly periodic `nx × nv` grid, `N = nx * nv`, as a `GridTensor` of width 1 over
+that grid: `f(I, J, K)` returns ``T_{IJK}`` for three `CartesianIndex`es, as an [`Arakawa`](@ref)
+does, and `DT` is the element type of the entries. An `Arakawa` on a grid other than `nx × nv`
+throws a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` throws an
+`ArgumentError`.
+
+The wrapped tensor takes three `CartesianIndex`es or three linear indices in the order of
+`LinearIndices((nx, nv))`; an index off the grid throws a `BoundsError` and `Array(pt)`
+materialises the tensor. The sums run over the stencil of every node where the tensor is a
+`GridTensor` whose stencil names no node twice, and over the whole axis otherwise, which keeps a
+nearest-neighbour bracket linear in the number of nodes.
+
+The entries have the element type `DT`, and [`poisson_matrix`](@ref) and [`poisson_apply`](@ref)
+return the `promote_type` of `DT` and the state's element type.
+"""
+struct PoissonTensor{DT, TT <: AbstractArray{DT, 3}} <: DiscreteBracket{DT}
+    tensor::TT
+    stencil::Bool
+
+    function PoissonTensor(tensor::AbstractArray{DT, 3}) where {DT}
+        size(tensor, 1) == size(tensor, 2) == size(tensor, 3) || throw(DimensionMismatch(
+            "a PoissonTensor is an N × N × N tensor, but the extents of this one are " *
+            "$(size(tensor))"))
+        new{DT, typeof(tensor)}(tensor, _stencil(tensor))
     end
+end
+
+# The sums may be restricted to the stencil of a node where the stencil is the same at every node,
+# which a periodic uniform stencil is; a stencil that names a node twice, as a direction shorter
+# than 2w + 1 gives, is not, and a tensor that is not a `GridTensor` has none at all.
+_stencil(::AbstractArray) = false
+_stencil(gt::GridTensor) = allunique(stencil_indices(gt, 1))
+
+# The tensor of a bracket on the grid it is given, which is the form of GeometricBrackets 0.1.2.
+# `MultiIndexLazyArray` takes a function and an `NTuple{M, Int}` grid rather than a callable
+# struct such as an `Arakawa`, hence the closure and the `Int`.
+function PoissonTensor(DT, nx, nv, f)
+    _check_bracket(f, DT, nx, nv)
+    g = (Int(nx), Int(nv))
+    return PoissonTensor(GridTensor(
+        MultiIndexLazyArray(
+            DT, (I, J, K) -> f(I, J, K), g, g, g), 1))
 end
 
 # a bracket that knows its grid and its element type, as an `Arakawa` does, adds a method that
 # checks them against those of the tensor; any other bracket is not checked
 _check_bracket(f, DT, nx, nv) = nothing
 
-Base.size(pt::PoissonTensor) = ntuple(_ -> pt.nx * pt.nv, 3)
-Base.size(pt::PoissonTensor, i) = i ≥ 1 && i ≤ 3 ? pt.nx * pt.nv : 1
+Base.size(pt::PoissonTensor) = size(pt.tensor)
+Base.size(pt::PoissonTensor, i) = size(pt.tensor, i)
 
-function Base.getindex(pt::PoissonTensor, I::CartesianIndex, J::CartesianIndex, K::CartesianIndex)
-    grid = CartesianIndices((pt.nx, pt.nv))
-    I in grid && J in grid && K in grid || throw(BoundsError(pt, (I, J, K)))
-    pt.f(I, J, K)
+Base.getindex(pt::PoissonTensor, inds...) = getindex(pt.tensor, inds...)
+Base.Array(pt::PoissonTensor) = Array(pt.tensor)
+
+# The indices a sum at the node `I` runs over: the stencil of a tensor whose sums may be
+# restricted to it, and the whole axis otherwise. Every caller hands the result to a helper
+# below, which is what keeps each loop on one concrete iterator and so allocation-free.
+function _indices(pt::PoissonTensor, I::Int)
+    pt.stencil ? stencil_indices(pt.tensor, I) : Base.OneTo(size(pt.tensor, 1))
 end
 
-function Base.getindex(pt::PoissonTensor, i::Int, j::Int, k::Int)
-    grid = CartesianIndices((pt.nx, pt.nv))
-    all(n -> checkbounds(Bool, grid, n), (i, j, k)) || throw(BoundsError(pt, (i, j, k)))
-    pt[grid[i], grid[j], grid[k]]
+function _check_state(pt::PoissonTensor, û::AbstractVector)
+    N = size(pt, 1)
+    length(û) == N || throw(DimensionMismatch(
+        "a PoissonTensor of $N nodes in each direction needs a vector of length $N, got " *
+        "$(length(û))"))
+    Base.require_one_based_indexing(û)
+    return nothing
 end
 
-function Base.Array(pt::PoissonTensor)
-    N = pt.nx * pt.nv
-    [pt[i, j, k] for i in 1:N, j in 1:N, k in 1:N]
+function _accumulate!(P::AbstractMatrix, pt::PoissonTensor, û::AbstractVector, I::Int, inds)
+    for J in inds, K in inds
+
+        P[J, K] += û[I] * pt.tensor[I, J, K]
+    end
+    return nothing
+end
+
+function _accumulate!(Pc::AbstractVector, pt::PoissonTensor, û::AbstractVector,
+        c::AbstractVector, I::Int, inds)
+    ûI = û[I]
+    for K in inds
+        cK = c[K]
+        for J in inds
+            Pc[J] += ûI * pt.tensor[I, J, K] * cK
+        end
+    end
+    return nothing
+end
+
+function poisson_matrix(pt::PoissonTensor{DT}, û::AbstractVector) where {DT}
+    _check_state(pt, û)
+    N = size(pt, 1)
+    P = zeros(promote_type(DT, eltype(û)), N, N)
+    for I in 1:N
+        _accumulate!(P, pt, û, I, _indices(pt, I))
+    end
+    return P
+end
+
+function poisson_apply(pt::PoissonTensor{DT}, û::AbstractVector, c::AbstractVector) where {DT}
+    _check_state(pt, û)
+    _check_state(pt, c)
+    N = size(pt, 1)
+    Pc = zeros(promote_type(DT, eltype(û), eltype(c)), N)
+    for I in 1:N
+        _accumulate!(Pc, pt, û, c, I, _indices(pt, I))
+    end
+    return Pc
+end
+
+function poisson_derivative(pt::PoissonTensor, û::AbstractVector)
+    _check_state(pt, û)
+    return Array(pt.tensor)
 end
 
 ### Poisson Operator
@@ -57,21 +139,21 @@ end
 
 The operator ``g \mapsto [g, h]`` for a fixed `h`, as the lazy `N × N` matrix
 ``\sum_K T_{IJK} h_K`` of the [`PoissonTensor`](@ref) ``T``. It gives the bracket at the grid
-nodes, with no quadrature weight. The sum runs over the ``3 \times 3`` stencil around `I`, which
-holds every nonzero coefficient of a nearest-neighbour bracket such as [`Arakawa`](@ref).
-`Matrix(po)` materialises it.
+nodes, with no quadrature weight. The sum runs over the stencil of each node where the tensor's
+sums may be restricted to it, which holds every nonzero coefficient of a nearest-neighbour bracket
+such as [`Arakawa`](@ref), and over the whole axis otherwise. `Matrix(po)` materialises it.
 
-`h` holds one value per grid node, in the order of `LinearIndices((nx, nv))`. Any other length
-throws a `DimensionMismatch`.
+`h` holds one value per node of the tensor. Any other length throws a `DimensionMismatch`.
 """
 struct PoissonOperator{DT, PT, HT} <: AbstractMatrix{DT}
     tensor::PT
     hamiltonian::HT
 
     function PoissonOperator(tensor::PoissonTensor{DT}, h::HT) where {DT, HT}
-        length(h) == tensor.nx * tensor.nv || throw(DimensionMismatch(
-            "a PoissonOperator on a $(tensor.nx) × $(tensor.nv) grid needs a Hamiltonian of " *
-            "length $(tensor.nx * tensor.nv), got $(length(h))"))
+        N = size(tensor, 1)
+        length(h) == N || throw(DimensionMismatch(
+            "a PoissonOperator of a tensor of $N nodes in each direction needs a Hamiltonian " *
+            "of length $N, got $(length(h))"))
         new{DT, typeof(tensor), HT}(tensor, h)
     end
 end
@@ -79,24 +161,29 @@ end
 Base.size(po::PoissonOperator) = (size(po.tensor, 1), size(po.tensor, 2))
 Base.size(po::PoissonOperator, i) = size(po)[i]
 
-_nx(t::PoissonTensor) = t.nx
-_nv(t::PoissonTensor) = t.nv
+# The extents a `PoissonTensor` wraps, which are the grid of the `GridTensor` it holds. Only a
+# tensor on a two-dimensional grid has them: a dense array, and a grid of another dimension, raise
+# a `MethodError` here rather than answer with the number of nodes in one direction.
+const _Wrapped2DGrid{DT} = PoissonTensor{DT,
+    <:GridTensor{DT, 3,
+        <:MultiIndexLazyArray{DT, 3,
+            <:Base.Callable, <:NTuple{3, MultiIndexAxis{2}}}}}
+
+_nx(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[1]
+_nv(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[2]
 
 _nx(t::PoissonOperator) = _nx(t.tensor)
 _nv(t::PoissonOperator) = _nv(t.tensor)
 
-function Base.getindex(po::PoissonOperator{DT}, i::Int, j::Int) where {DT}
-    checkbounds(po, i, j)
-    nx, nv = _nx(po), _nv(po)
-    grid = CartesianIndices((nx, nv))
-    li = LinearIndices(grid)
-    I, J = grid[i], grid[j]
-
+function _entry(pt::PoissonTensor{DT}, h::AbstractVector, i::Int, j::Int, inds) where {DT}
     x = zero(DT)
-    for d1 in -1:1, d2 in -1:1
-
-        K = CartesianIndex(mod1(I[1] + d1, nx), mod1(I[2] + d2, nv))
-        x += po.tensor[I, J, K] * po.hamiltonian[li[K]]
+    for K in inds
+        x += pt.tensor[i, j, K] * h[K]
     end
     return x
+end
+
+function Base.getindex(po::PoissonOperator, i::Int, j::Int)
+    checkbounds(po, i, j)
+    return _entry(po.tensor, po.hamiltonian, i, j, _indices(po.tensor, i))
 end

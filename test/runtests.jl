@@ -10,6 +10,7 @@ if "core" in GROUPS
     @safetestset "Polar spaces" include("polarspaces.jl")
     @safetestset "Pullback" include("pullback.jl")
     @safetestset "Brackets" include("brackets.jl")
+    @safetestset "Poisson tensors" include("poisson_tensors.jl")
     @safetestset "Arakawa" include("arakawa.jl")
     @safetestset "Metric brackets" include("metricbrackets.jl")
     @safetestset "Collision brackets" include("collisionbrackets.jl")

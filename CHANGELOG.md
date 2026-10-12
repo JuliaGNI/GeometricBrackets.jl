@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- `PoissonTensor` is now a `DiscreteBracket` that wraps a rank-3 array. The wrapped tensor carries
+  the grid and the element type, and the fields `nx`, `nv` and `f` are gone. Its parameters are
+  `{DT, TT}`, the type of the wrapped tensor, not the type of the coefficient function.
+  `PoissonTensor(DT, nx, nv, f)` still builds the tensor of a bracket on an `nx × nv` grid. The
+  change is breaking: `PoissonTensor{DT, Arakawa{DT}}` matches nothing.
+- `PoissonOperator` sums over the stencil of the tensor it is given, not a fixed 3 × 3 loop, so
+  it follows the locality of that tensor.
+- MultiIndexArrays is a dependency again, for the `GridTensor` that a `PoissonTensor` wraps.
+
+### Added
+
+- `poisson_matrix`, `poisson_apply` and `poisson_derivative` on a `PoissonTensor`. `poisson_matrix`
+  gives the matrix of the bracket at a state `û`, and `poisson_derivative` the tensor itself, which
+  is constant because the bracket is linear in the state. `poisson_apply` is matrix-free: it builds
+  no matrix and returns the product of the bracket matrix with a vector `c`.
+
 ### Changed
 
 - CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test

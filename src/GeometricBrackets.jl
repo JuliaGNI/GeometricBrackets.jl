@@ -7,6 +7,12 @@ using Random
 using SimpleSolvers
 using SimpleSplines
 using SparseArrays
+
+# The tensor a `PoissonTensor` wraps. `GridTensor` carries the grid, the stencil and the element
+# type, and `stencil_indices` is the way to the stencil: `GridTensor`'s width is not public.
+# Imported by name, never as `import MultiIndexArrays`, so that a qualified call cannot creep in.
+using MultiIndexArrays: GridTensor, MultiIndexAxis, MultiIndexLazyArray, stencil_indices
+
 # Loaded for its SimpleSolvers extension: `SparspakLU` is the linear solver the mixed
 # formulation uses. See `Integrator`'s `formulation` keyword.
 import Sparspak
