@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- `PoissonTensor` is now a `DiscreteBracket` that wraps a rank-3 array. A wrapped `GridTensor`
+  carries the grid and the element type; a plain array carries only the element type. The fields
+  `nx`, `nv` and `f` are gone. Its parameters are `{DT, TT}`, `TT` being the type of the wrapped
+  tensor, bounded by `AbstractArray{DT, 3}`, not the type of the coefficient function.
+  `PoissonTensor(DT, nx, nv, f)` still builds the tensor of a bracket on an `nx × nv` grid. The
+  change is breaking: `PoissonTensor{DT, Arakawa{DT}}` no longer forms, because an `Arakawa` is not
+  an `AbstractArray{DT, 3}`; `PoissonTensor{Float64, Arakawa{Float64}}` throws a `TypeError`.
+  `PoissonTensor(tensor)` takes a rank-3 array whose three extents agree and whose axes are `1:N`.
+  An array whose extents differ throws a `DimensionMismatch`, and one with offset axes an
+  `ArgumentError`.
+- `PoissonOperator` sums over the stencil of the tensor it is given, not a fixed 3 × 3 loop, so
+  it follows the locality of that tensor.
+- MultiIndexArrays is a dependency again, for the `GridTensor` that a `PoissonTensor` wraps.
+
+### Added
+
+- `poisson_matrix`, `poisson_apply` and `poisson_derivative` on a `PoissonTensor`. `poisson_matrix`
+  gives the matrix of the bracket at a state `û`, and `poisson_derivative` the tensor itself, which
+  is constant because the bracket is linear in the state. `poisson_apply` is matrix-free: it builds
+  no matrix and returns the product of the bracket matrix with a vector `c`.
+
 ### Changed
 
 - CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of `Julia min`, and a test
@@ -22,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tested, and the wider range claimed support that does not hold: CairoMakie 0.12 fails to
   precompile on Julia 1.13. A user who pins CairoMakie 0.12 alongside this package now gets a
   resolver error rather than a precompilation failure.
+
+### Fixed
+
+- `PoissonOperator(tensor, h)` has the element type `promote_type(eltype(tensor), eltype(h))`. In
+  0.2.0 it took the tensor's element type alone, so a `Float32` tensor with a `Float64` Hamiltonian
+  made `Matrix(po)` a `Float32` matrix that rounded the Hamiltonian's values, and a `Float64` tensor
+  with a complex Hamiltonian made `Matrix(po)` throw `InexactError`. `Matrix(po)` now has the
+  promoted type.
 
 ## [0.2.0] — 2026-10-03
 
