@@ -34,18 +34,6 @@
 - **kind:** docs
 - **found:** #22
 
-### K7 · The `DiscreteBracket` docstring claims that every bracket is skew-symmetrised, and `PoissonTensor` is not.
-
-- **location:** `src/brackets.jl:19`
-- **evidence:** `src/brackets.jl:19-20` says "every bracket here is built in explicitly
-  skew-symmetrised form, so it holds to the last bit", and its table has no `PoissonTensor` row.
-  `PoissonTensor` is a `DiscreteBracket` that contracts the tensor it is given:
-  `test/poisson_tensors.jl` wraps a random tensor that is not antisymmetric in `(J, K)` and asserts
-  `!isantisymmetric(wa, û)`. The decided fix weakens the guarantee to the brackets that are built
-  skew-symmetrised and adds a `PoissonTensor` row, in a pull request after #37.
-- **kind:** docs
-- **found:** #37
-
 ### K8 · `poisson_matrix` and `poisson_apply` drop the coefficients of a non-local `f` that `Array`, `getindex` and `poisson_derivative` keep.
 
 - **location:** `src/poisson_tensors.jl:59`

@@ -16,10 +16,12 @@ the Casimirs — follows from those and is written once.
 
 # What is and is not guaranteed
 
-Antisymmetry is a property of how the bracket is *assembled*, and every bracket here is
-built in explicitly skew-symmetrised form, so it holds to the last bit for any quadrature
-and any mesh. The Jacobi identity is not: it is a genuine question about the discretisation,
-and the answer differs from one bracket to the next.
+Antisymmetry is a property of how the bracket is *assembled*, and every bracket here except
+[`PoissonTensor`](@ref) is built in explicitly skew-symmetrised form, so it holds to the last
+bit for any quadrature and any mesh. A `PoissonTensor` contracts the tensor it is given and
+is antisymmetric only if that tensor is antisymmetric in its last two indices. The Jacobi
+identity is not a property of the assembly: it is a genuine question about the
+discretisation, and the answer differs from one bracket to the next.
 
 | bracket | antisymmetric | Jacobi |
 |:--|:--|:--|
@@ -28,6 +30,7 @@ and the answer differs from one bracket to the next.
 | [`MiuraBracket`](@ref) | yes | yes, being a pushforward of a Poisson bracket |
 | [`AffineBracket`](@ref) | yes | **no** — and this is a result, not a defect |
 | [`Arakawa`](@ref) | yes | **no** — the residual is of order one under refinement |
+| [`PoissonTensor`](@ref) | only if the tensor is | only if the tensor holds the structure constants of a Lie algebra |
 
 The failure of [`AffineBracket`](@ref) is the point of the KdV manuscript: the second
 Hamiltonian structure of KdV is the Virasoro algebra, so the Jacobi identity would require

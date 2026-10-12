@@ -24,9 +24,10 @@ because the arithmetic happens to be small rather than because anything preserve
 
 ### Antisymmetry is free, so it is not a result
 
-Every bracket here is assembled in explicitly skew-symmetrised form, so
-[`isantisymmetric`](@ref) holds to the last bit at any number of quadrature points and on any
-mesh. A nonzero value is a bug, not a finding.
+Every bracket here except [`PoissonTensor`](@ref) is assembled in explicitly skew-symmetrised
+form, so [`isantisymmetric`](@ref) holds to the last bit at any number of quadrature points and
+on any mesh. A nonzero value is a bug, not a finding. A `PoissonTensor` contracts the tensor it
+is given, and is antisymmetric only if that tensor is.
 
 This is worth having made free. The unsymmetrised assembly of the second KdV bracket is the
 *same matrix* in exact arithmetic — the term that differs is symmetric in ``k \leftrightarrow

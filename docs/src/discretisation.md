@@ -89,7 +89,8 @@ the time goes: at ``N = 384`` a mass solve is 0.001 ms against a 4.2 ms implicit
 
 ## Why the skew-symmetrised form matters
 
-Every bracket here is assembled in explicitly skew-symmetrised form. This is not cosmetic.
+Every bracket here except [`PoissonTensor`](@ref), which contracts the tensor it is given, is
+assembled in explicitly skew-symmetrised form. This is not cosmetic.
 
 The unsymmetrised assembly of the second KdV bracket is the *same matrix* in exact
 arithmetic — the term that differs is symmetric in ``k \leftrightarrow l`` and drops out of

@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   made `Matrix(po)` a `Float32` matrix that rounded the Hamiltonian's values, and a `Float64` tensor
   with a complex Hamiltonian made `Matrix(po)` throw `InexactError`. `Matrix(po)` now has the
   promoted type.
+- The `DiscreteBracket` docstring and the Diagnostics and Discretisation pages no longer say that
+  every bracket is skew-symmetrised. `PoissonTensor` is not: it contracts the tensor it is given,
+  and is antisymmetric only if that tensor is. The docstring's table has a `PoissonTensor` row.
+  This fixes K7.
 
 ## [0.2.0] — 2026-10-03
 
