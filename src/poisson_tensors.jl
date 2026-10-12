@@ -23,10 +23,11 @@ throws a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` th
 `ArgumentError`.
 
 The wrapped tensor takes three `CartesianIndex`es or three linear indices in the order of
-`LinearIndices((nx, nv))`; an index off the grid throws a `BoundsError` and `Array(pt)`
-materialises the tensor. The sums run over the stencil of every node where the tensor is a
-`GridTensor` whose stencil names no node twice, and over the whole axis otherwise, which keeps a
-nearest-neighbour bracket linear in the number of nodes.
+`LinearIndices((nx, nv))`; its three axes are `1:N`, and offset axes are neither checked nor
+claimed. An index off the grid throws a `BoundsError` and `Array(pt)` materialises the tensor.
+The sums run over the stencil of every node where the tensor is a `GridTensor` whose stencil
+names no node twice, and over the whole axis otherwise, which keeps a nearest-neighbour bracket
+linear in the number of nodes.
 
 The entries have the element type `DT`, and [`poisson_matrix`](@ref) and [`poisson_apply`](@ref)
 return the `promote_type` of `DT` and the state's element type.

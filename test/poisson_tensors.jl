@@ -58,7 +58,7 @@ gridded(T, nx, nv) =
         (I, J, K) -> T[li[I], li[J], li[K]]
     end
 
-@testset "$(rpad("the wrapper reproduces the entries of GeometricBrackets 0.1.2",76))" begin
+@testset "the wrapper reproduces the entries of GeometricBrackets 0.1.2" begin
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
         N = nx * nv
@@ -99,7 +99,7 @@ gridded(T, nx, nv) =
     end
 end
 
-@testset "$(rpad("the wrapper is antisymmetric, and the check is not vacuous",76))" begin
+@testset "the wrapper is antisymmetric, and the check is not vacuous" begin
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
         N = nx * nv
@@ -114,42 +114,47 @@ end
     end
 end
 
-@testset "$(rpad("a tensor that is not a GridTensor wraps too",76))" begin
+@testset "a tensor that is not a GridTensor wraps too" begin
     N = 12
-    # a dense tensor, antisymmetric in (J, K), with entries outside every 3 × 3 stencil
-    T = randn(PIN_RNG, N, N, N)
-    T = (T .- permutedims(T, (1, 3, 2))) ./ 2
-    w = PoissonTensor(T)
-    û, c, h = randn(PIN_RNG, N), randn(PIN_RNG, N), randn(PIN_RNG, N)
+    for DT in PIN_TYPES
 
-    @test w isa DiscreteBracket{Float64}
-    @test !w.stencil
+        # a dense tensor, antisymmetric in (J, K), with entries outside every 3 × 3 stencil
+        T = randn(PIN_RNG, DT, N, N, N)
+        T = (T .- permutedims(T, (1, 3, 2))) ./ 2
+        w = PoissonTensor(T)
+        û, c, h = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
 
-    # the full sum, over the whole axis: the fixed -1:1 stencil of the pre-split `poisson_apply`
-    # sees only a ninth of these terms
-    full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
-    @test maximum(abs, full) > 0
-    @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(Float64)
-    @test poisson_matrix(w, û) * c ≈ poisson_apply(w, û, c) rtol = N^2 * eps(Float64)
-    @test Matrix(PoissonOperator(w, h)) ≈
-          [sum(T[I, J, K] * h[K] for K in 1:N) for I in 1:N, J in 1:N] rtol = N^2 *
-                                                                              eps(Float64)
+        @test w isa DiscreteBracket{DT}
+        @test !w.stencil
 
-    # a tensor that is not antisymmetric in (J, K) is accepted, and reported as it is: the wrapper
-    # contracts the tensor it is given, and does not skew-symmetrise it on the way through
-    Ta = randn(PIN_RNG, N, N, N)
-    wa = PoissonTensor(Ta)
-    @test !isantisymmetric(wa, û)
-    @test poisson_matrix(wa, û) ==
-          [sum(û[I] * Ta[I, J, K] for I in 1:N) for J in 1:N, K in 1:N]
+        # the full sum, over the whole axis: the fixed -1:1 stencil of the pre-split `poisson_apply`
+        # sees only a ninth of these terms
+        full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
+        @test maximum(abs, full) > 0
+        @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(DT)
+        @test poisson_matrix(w, û) * c ≈ poisson_apply(w, û, c) rtol = N^2 * eps(DT)
+        full_h = [sum(T[I, J, K] * h[K] for K in 1:N) for I in 1:N, J in 1:N]
+        @test maximum(abs, full_h) > 0
+        @test Matrix(PoissonOperator(w, h)) ≈ full_h rtol = N^2 * eps(DT)
+
+        # a tensor that is not antisymmetric in (J, K) is accepted, and reported as it is: the
+        # wrapper contracts the tensor it is given, and does not skew-symmetrise it on the way
+        Ta = randn(PIN_RNG, DT, N, N, N)
+        wa = PoissonTensor(Ta)
+        @test !isantisymmetric(wa, û)
+        @test poisson_matrix(wa, û) ==
+              [sum(û[I] * Ta[I, J, K] for I in 1:N) for J in 1:N, K in 1:N]
+    end
 end
 
-@testset "$(rpad("the type boundary holds, and nothing of MultiIndexArrays leaks",76))" begin
-    w = PoissonTensor(Float64, 3, 4, arakawa(3, 4, Float64))
+@testset "the type boundary holds, and nothing of MultiIndexArrays leaks" begin
+    for DT in PIN_TYPES
+        w = PoissonTensor(DT, 3, 4, arakawa(3, 4, DT))
 
-    # the parameters are the element type and the wrapped tensor, with no `nx`, `nv` or `f` field
-    @test fieldnames(typeof(w)) == (:tensor, :stencil)
-    @test !(:nx in fieldnames(typeof(w))) && !(:nv in fieldnames(typeof(w)))
+        # the parameters are the element type and the wrapped tensor, no `nx`, `nv` or `f` field
+        @test fieldnames(typeof(w)) == (:tensor, :stencil)
+        @test !(:nx in fieldnames(typeof(w))) && !(:nv in fieldnames(typeof(w)))
+    end
     @test PoissonTensor(se3()) isa PoissonTensor{Rational{BigInt}}
 
     # `src/` loads MultiIndexArrays by name only: the module itself is not bound, and no name of
@@ -163,7 +168,7 @@ end
     @test isempty(mibound)
 end
 
-@testset "$(rpad("the contraction is the Lie-Poisson one, and the Jacobiator runs",76))" begin
+@testset "the contraction is the Lie-Poisson one, and the Jacobiator runs" begin
     # the structure constants of se3, where the sums are exact and a transposed contraction
     # shows: it is antisymmetric and nonzero too, so `isantisymmetric` alone cannot catch it
     z = Rational{BigInt}[1 // 2, -3 // 4, 5 // 6, 7 // 8, -1 // 3, 2 // 5]
@@ -173,6 +178,19 @@ end
     @test jacobi_residual(PoissonTensor(C), z) == 0
     Cbad = random_antisymmetric_c(Xoshiro(0x2c7b41), 6)
     @test jacobi_residual(PoissonTensor(Cbad), z) != 0
+
+    # the same pair of assertions in the two precisions the part claims: the structure constants
+    # are 0, ±1 and ±1/2, exact in `Float32`, and the terms of the Jacobiator cancel there too
+    # (measured 0.0 on 1.13.1). The two sums take their terms in the same ascending `I`, so the
+    # entry-by-entry comparison is exact rather than approximate.
+    for DT in PIN_TYPES
+        zDT = DT.(z)
+        CD, CbadD = DT.(C), DT.(Cbad)
+        @test poisson_matrix(PoissonTensor(CD), zDT) == lie_poisson_matrix(CD, zDT)
+        @test poisson_derivative(PoissonTensor(CD), zDT) == CD
+        @test jacobi_residual(PoissonTensor(CD), zDT) == 0
+        @test jacobi_residual(PoissonTensor(CbadD), zDT) != 0
+    end
 
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
@@ -190,75 +208,82 @@ end
     end
 end
 
-@testset "$(rpad("the stencil rule, on a grid whose stencil repeats a node",76))" begin
+@testset "the stencil rule, on a grid whose stencil repeats a node" begin
     # 2 × 5 at width 1: the two x-neighbours of a node are the same node, so the stencil names it
     # twice and the sums may not be restricted to it
     nx, nv = 2, 5
     N = nx * nv
-    T = zeros(Float64, N, N, N)
-    for I in CartesianIndices((nx, nv))
-        s = collect(stencil_indices(LinearIndices((nx, nv))[I], 1, (nx, nv)))
-        for J in s, K in s
+    for DT in PIN_TYPES
+        T = zeros(DT, N, N, N)
+        for I in CartesianIndices((nx, nv))
+            s = collect(stencil_indices(LinearIndices((nx, nv))[I], 1, (nx, nv)))
+            for J in s, K in s
 
-            T[LinearIndices((nx, nv))[I], J, K] = 1.0
+                T[LinearIndices((nx, nv))[I], J, K] = one(DT)
+            end
         end
-    end
-    w = wrapped(gridded(T, nx, nv), (nx, nv), Float64, 1)
-    @test !w.stencil
+        w = wrapped(gridded(T, nx, nv), (nx, nv), DT, 1)
+        @test !w.stencil
 
-    û, c, h = randn(PIN_RNG, N), randn(PIN_RNG, N), randn(PIN_RNG, N)
-    full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
-    @test maximum(abs, full) > 0
-    @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(Float64)
-    full_h = [sum(T[I, J, K] * h[K] for K in 1:N) for I in 1:N, J in 1:N]
-    @test maximum(abs, full_h) > 0
-    @test Matrix(PoissonOperator(w, h)) ≈ full_h rtol = N^2 * eps(Float64)
+        û, c, h = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
+        @test maximum(abs, full) > 0
+        @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(DT)
+        full_h = [sum(T[I, J, K] * h[K] for K in 1:N) for I in 1:N, J in 1:N]
+        @test maximum(abs, full_h) > 0
+        @test Matrix(PoissonOperator(w, h)) ≈ full_h rtol = N^2 * eps(DT)
+    end
 end
 
-@testset "$(rpad("the sums are restricted to the stencil where it does not repeat",76))" begin
+@testset "the sums are restricted to the stencil where it does not repeat" begin
     nx, nv = 4, 5
     N = nx * nv
-    calls = Ref(0)
-    a = arakawa(nx, nv, Float64)
-    w = wrapped((nx, nv), Float64, 1) do I, J, K
-        calls[] += 1
-        a(I, J, K)
-    end
-    @test w.stencil
+    for DT in PIN_TYPES
+        calls = Ref(0)
+        a = arakawa(nx, nv, DT)
+        w = wrapped((nx, nv), DT, 1) do I, J, K
+            calls[] += 1
+            a(I, J, K)
+        end
+        @test w.stencil
 
-    û, c = randn(PIN_RNG, N), randn(PIN_RNG, N)
-    calls[] = 0
-    Pc = poisson_apply(w, û, c)
-    @test maximum(abs, Pc) > 0
-    # one read per node of the stencil, not one per node of the grid: N (2w + 1)^4 = 1620
-    @test calls[] <= N * 9^2
+        û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
+        calls[] = 0
+        Pc = poisson_apply(w, û, c)
+        @test maximum(abs, Pc) > 0
+        # one read per node of the stencil, not one per node of the grid: N (2w + 1)^4 = 1620
+        @test calls[] <= N * 9^2
+    end
 end
 
-@testset "$(rpad("the width comes from the tensor, not from a fixed -1:1",76))" begin
+@testset "the width comes from the tensor, not from a fixed -1:1" begin
     # a 1-D grid of 7 nodes at width 2, whose coefficients are nonzero at offset 2
     ng = 7
-    T = zeros(Float64, ng, ng, ng)
-    for i in 1:ng, j in collect(stencil_indices(i, 2, (ng,))),
-        k in collect(stencil_indices(i, 2, (ng,)))
-        T[i, j, k] = 1.0
-    end
-    @test T[1, 3, 1] == 1.0             # nonzero at offset 2, out of reach of a width of 1
-    w = wrapped((I, J, K) -> T[I[1], J[1], K[1]], (ng,), Float64, 2)
-    @test w.stencil
-    @test length(stencil_indices(
-        GridTensor(
-            MultiIndexLazyArray(Float64, (I, J, K) -> 0.0, (ng,), (ng,), (ng,)), 2),
-        1)) == 5
+    for DT in PIN_TYPES
+        T = zeros(DT, ng, ng, ng)
+        for i in 1:ng, j in collect(stencil_indices(i, 2, (ng,))),
+            k in collect(stencil_indices(i, 2, (ng,)))
+            T[i, j, k] = one(DT)
+        end
+        # nonzero at offset 2, out of reach of a width of 1
+        @test T[1, 3, 1] == one(DT)
+        w = wrapped((I, J, K) -> T[I[1], J[1], K[1]], (ng,), DT, 2)
+        @test w.stencil
+        @test length(stencil_indices(
+            GridTensor(
+                MultiIndexLazyArray(DT, (I, J, K) -> zero(DT), (ng,), (ng,), (ng,)), 2),
+            1)) == 5
 
-    û, c, h = randn(PIN_RNG, ng), randn(PIN_RNG, ng), randn(PIN_RNG, ng)
-    full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:ng, K in 1:ng) for J in 1:ng]
-    @test maximum(abs, full) > 0
-    @test poisson_apply(w, û, c) ≈ full rtol = ng^2 * eps(Float64)
-    full_h = [sum(T[I, J, K] * h[K] for K in 1:ng) for I in 1:ng, J in 1:ng]
-    @test Matrix(PoissonOperator(w, h)) ≈ full_h rtol = ng^2 * eps(Float64)
+        û, c, h = randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng)
+        full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:ng, K in 1:ng) for J in 1:ng]
+        @test maximum(abs, full) > 0
+        @test poisson_apply(w, û, c) ≈ full rtol = ng^2 * eps(DT)
+        full_h = [sum(T[I, J, K] * h[K] for K in 1:ng) for I in 1:ng, J in 1:ng]
+        @test Matrix(PoissonOperator(w, h)) ≈ full_h rtol = ng^2 * eps(DT)
+    end
 end
 
-@testset "$(rpad("the extents of the tensor and its rank are checked",76))" begin
+@testset "the extents of the tensor and its rank are checked" begin
     for DT in PIN_TYPES
         @test_throws DimensionMismatch PoissonTensor(zeros(DT, 3, 3, 4))
         @test_throws DimensionMismatch PoissonTensor(zeros(DT, 3, 4, 3))
@@ -269,15 +294,18 @@ end
     end
 end
 
-@testset "$(rpad("only a two-dimensional grid has extents",76))" begin
-    @test_throws MethodError _nx(PoissonTensor(randn(PIN_RNG, 4, 4, 4)))
-    @test_throws MethodError _nv(PoissonTensor(randn(PIN_RNG, 4, 4, 4)))
-    gt1 = GridTensor(MultiIndexLazyArray(Float64, (I, J, K) -> 0.0, (7,), (7,), (7,)), 2)
-    @test_throws MethodError _nx(PoissonTensor(gt1))
-    @test_throws MethodError _nv(PoissonTensor(gt1))
+@testset "only a two-dimensional grid has extents" begin
+    for DT in PIN_TYPES
+        @test_throws MethodError _nx(PoissonTensor(randn(PIN_RNG, DT, 4, 4, 4)))
+        @test_throws MethodError _nv(PoissonTensor(randn(PIN_RNG, DT, 4, 4, 4)))
+        gt1 = GridTensor(
+            MultiIndexLazyArray(DT, (I, J, K) -> zero(DT), (7,), (7,), (7,)), 2)
+        @test_throws MethodError _nx(PoissonTensor(gt1))
+        @test_throws MethodError _nv(PoissonTensor(gt1))
+    end
 end
 
-@testset "$(rpad("the states of a bracket are checked",76))" begin
+@testset "the states of a bracket are checked" begin
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
         N = nx * nv
@@ -291,11 +319,12 @@ end
         # a state of the right length whose axis is 0:N-1 rather than 1:N
         @test_throws ArgumentError poisson_matrix(w, Base.IdentityUnitRange(0:(N - 1)))
         @test_throws ArgumentError poisson_apply(w, û, Base.IdentityUnitRange(0:(N - 1)))
+        @test_throws ArgumentError poisson_apply(w, Base.IdentityUnitRange(0:(N - 1)), c)
         @test_throws ArgumentError poisson_derivative(w, Base.IdentityUnitRange(0:(N - 1)))
     end
 end
 
-@testset "$(rpad("the result's element type is the promoted one",76))" begin
+@testset "the result's element type is the promoted one" begin
     for (nx, nv) in PIN_GRIDS
         N = nx * nv
         w32 = PoissonTensor(Float32, nx, nv, arakawa(nx, nv, Float32))
@@ -310,7 +339,7 @@ end
     end
 end
 
-@testset "$(rpad("the derivative tensor and the operator of a wrapped tensor",76))" begin
+@testset "the derivative tensor and the operator of a wrapped tensor" begin
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
         N = nx * nv
@@ -334,7 +363,7 @@ end
     end
 end
 
-@testset "$(rpad("indexing and an operator entry are inferred and allocate nothing",76))" begin
+@testset "indexing and an operator entry are inferred and allocate nothing" begin
     for DT in PIN_TYPES, (nx, nv) in PIN_GRIDS
 
         N = nx * nv
@@ -344,6 +373,9 @@ end
 
         @test @inferred(w[2, 3, 5]) == w[2, 3, 5]
         @test @inferred(po[2, 3]) == po[2, 3]
+        # `_entry` accumulates from `zero(DT)`, not from a literal: a literal promotes a `Float32`
+        # entry, so the entry of an operator of a `Float32` tensor is of the tensor's type
+        @test po[2, 3] isa DT
 
         # Coverage instrumentation allocates on every counted line, so under it the assertion does
         # not run rather than being weakened.
@@ -353,7 +385,10 @@ end
             # `poisson_apply` builds no matrix: its result, and not an N × N one
             @test allocations(poisson_apply, w, û, c) < @allocated(zeros(DT, N, N))
         end
-        # a control: the barrier sees an allocation, so the zeros above are not vacuous
+        # a control through each barrier the readings above use: the barrier sees an allocation, so
+        # those zeros are not vacuous
         @test allocations(collect, û) > 0
+        @test allocations(fill, one(DT), 2, 3) > 0
+        @test allocations(fill, one(DT), 2, 3, 4) > 0
     end
 end
