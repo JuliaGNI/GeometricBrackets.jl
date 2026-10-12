@@ -16,18 +16,22 @@ the Casimirs — follows from those and is written once.
 
 # What is and is not guaranteed
 
-Antisymmetry is a property of how the bracket is *assembled*, and every bracket here is
-built in explicitly skew-symmetrised form, so it holds to the last bit for any quadrature
-and any mesh. The Jacobi identity is not: it is a genuine question about the discretisation,
-and the answer differs from one bracket to the next.
+Antisymmetry is a property of how the bracket is *assembled*, and every bracket here that
+assembles its own matrix does so in explicitly skew-symmetrised form, so it holds to the last
+bit for any quadrature and any mesh. A [`ConstantBracket`](@ref) built from a given matrix
+and a [`PoissonTensor`](@ref) take what they are given, and are antisymmetric only if it is:
+the matrix, or the tensor in its last two indices. The Jacobi
+identity is not a property of the assembly: it is a genuine question about the
+discretisation, and the answer differs from one bracket to the next.
 
 | bracket | antisymmetric | Jacobi |
 |:--|:--|:--|
-| [`ConstantBracket`](@ref) | yes | yes, automatically — a constant antisymmetric bracket satisfies it |
+| [`ConstantBracket`](@ref) | yes from a space; from a given matrix, only if it is | yes, automatically — a constant antisymmetric bracket satisfies it |
 | [`GaugedBracket`](@ref) | yes | yes, by the theorem it is built on |
 | [`MiuraBracket`](@ref) | yes | yes, being a pushforward of a Poisson bracket |
 | [`AffineBracket`](@ref) | yes | **no** — and this is a result, not a defect |
 | [`Arakawa`](@ref) | yes | **no** — the residual is of order one under refinement |
+| [`PoissonTensor`](@ref) | only if the tensor is | only if the tensor holds the structure constants of a Lie algebra |
 
 The failure of [`AffineBracket`](@ref) is the point of the KdV manuscript: the second
 Hamiltonian structure of KdV is the Virasoro algebra, so the Jacobi identity would require
@@ -91,6 +95,10 @@ The normalised Jacobiator residual of ``\mathbb{P}`` at ``\hat{u}``,
 
 divided by the largest single term entering it, so that the number is dimensionless and
 comparable across resolutions.
+
+The cyclic sum is the Jacobiator only for an antisymmetric ``\mathbb{P}``. For any other
+``\mathbb{P}`` a zero residual does not show the Jacobi identity: a tensor that is neither
+antisymmetric nor a Lie algebra can give zero. Check [`isantisymmetric`](@ref) first.
 
 The normalisation is what makes the quantity worth reporting. A raw residual can be driven
 to zero by any change that merely shrinks the bracket, and a residual normalised by

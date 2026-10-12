@@ -53,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   made `Matrix(po)` a `Float32` matrix that rounded the Hamiltonian's values, and a `Float64` tensor
   with a complex Hamiltonian made `Matrix(po)` throw `InexactError`. `Matrix(po)` now has the
   promoted type.
+- The `DiscreteBracket` docstring and the Diagnostics and Discretisation pages no longer say that
+  every bracket is skew-symmetrised. A `ConstantBracket` built from a given matrix and a
+  `PoissonTensor` take what they are given, and are antisymmetric only if it is. The docstring's
+  table has a `PoissonTensor` row, and its `ConstantBracket` row names both constructors. This
+  fixes K7.
+- The bracket table of the Discretisation page has `Arakawa` and `PoissonTensor` rows, and its
+  `ConstantBracket` row names both constructors.
+- The `jacobi_residual` docstring says that its cyclic sum is the Jacobiator only for an
+  antisymmetric matrix: a tensor that is neither antisymmetric nor a Lie algebra can give a zero
+  residual.
 
 ## [0.2.0] — 2026-10-03
 

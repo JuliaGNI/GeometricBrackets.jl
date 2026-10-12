@@ -82,14 +82,17 @@ the time goes: at ``N = 384`` a mass solve is 0.001 ms against a 4.2 ms implicit
 
 | type | antisymmetric | Jacobi |
 |:--|:--|:--|
-| [`ConstantBracket`](@ref) | yes | yes, automatically |
+| [`ConstantBracket`](@ref) | yes from a space; from a given matrix, only if it is | yes, automatically |
 | [`GaugedBracket`](@ref) | yes | yes, by the theorem it is built on |
 | [`MiuraBracket`](@ref) | yes | yes, being a pushforward |
 | [`AffineBracket`](@ref) | yes | **no** |
+| [`Arakawa`](@ref) | yes | **no** |
+| [`PoissonTensor`](@ref) | only if the tensor is | only if the tensor holds the structure constants of a Lie algebra |
 
 ## Why the skew-symmetrised form matters
 
-Every bracket here is assembled in explicitly skew-symmetrised form. This is not cosmetic.
+Every bracket here that assembles its own matrix does so in explicitly skew-symmetrised form.
+This is not cosmetic.
 
 The unsymmetrised assembly of the second KdV bracket is the *same matrix* in exact
 arithmetic — the term that differs is symmetric in ``k \leftrightarrow l`` and drops out of
