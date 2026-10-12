@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/brackets.jl`, `src/equations/kdv.jl`, `src/integrators.jl` and `src/diagnostics.jl`, and
   the test convention keeps a test file at the top level of `test/` only where it mirrors
   `src/<name>.jl`.
+- `[compat] CairoMakie` is `"0.15"`, narrowed from `"0.12, 0.13, 0.14, 0.15"`. Only 0.15 is
+  tested, and the wider range claimed support that does not hold: CairoMakie 0.12 fails to
+  precompile on Julia 1.13. A user who pins CairoMakie 0.12 alongside this package now gets a
+  resolver error rather than a precompilation failure.
 
 ## [0.2.0] — 2026-10-03
 
