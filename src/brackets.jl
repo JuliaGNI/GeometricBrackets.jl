@@ -96,6 +96,10 @@ The normalised Jacobiator residual of ``\mathbb{P}`` at ``\hat{u}``,
 divided by the largest single term entering it, so that the number is dimensionless and
 comparable across resolutions.
 
+The cyclic sum is the Jacobiator only for an antisymmetric ``\mathbb{P}``. For any other
+``\mathbb{P}`` a zero residual does not show the Jacobi identity: a tensor that is neither
+antisymmetric nor a Lie algebra can give zero. Check [`isantisymmetric`](@ref) first.
+
 The normalisation is what makes the quantity worth reporting. A raw residual can be driven
 to zero by any change that merely shrinks the bracket, and a residual normalised by
 ``\max|\mathbb{P}|^2`` by any change that makes it blow up; dividing by the largest term
