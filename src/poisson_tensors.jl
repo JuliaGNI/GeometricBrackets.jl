@@ -22,15 +22,15 @@ does, and `DT` is the element type of the entries. An `Arakawa` on a grid other 
 throws a `DimensionMismatch`, and an `Arakawa` whose element type is not `DT` throws an
 `ArgumentError`.
 
-The wrapped tensor takes three `CartesianIndex`es or three linear indices in the order of
-`LinearIndices((nx, nv))`; its three axes are `1:N`, and offset axes are neither checked nor
+The grid constructor takes three `CartesianIndex`es or three linear indices in the order of
+`LinearIndices((nx, nv))`. The wrapper assumes axes `1:N`; offset axes are neither checked nor
 claimed. An index off the grid throws a `BoundsError` and `Array(pt)` materialises the tensor.
 The sums run over the stencil of every node where the tensor is a `GridTensor` whose stencil
-names no node twice, and over the whole axis otherwise, which keeps a nearest-neighbour bracket
-linear in the number of nodes.
+names no node twice, and over the whole axis otherwise. Matrix-free application of a
+nearest-neighbour bracket is linear in the number of nodes.
 
-The entries have the element type `DT`, and [`poisson_matrix`](@ref) and [`poisson_apply`](@ref)
-return the `promote_type` of `DT` and the state's element type.
+The entries have the element type `DT`. [`poisson_matrix`](@ref) promotes `DT` with the state's
+element type; [`poisson_apply`](@ref) also includes the element type of the vector it multiplies.
 """
 struct PoissonTensor{DT, TT <: AbstractArray{DT, 3}} <: DiscreteBracket{DT}
     tensor::TT
@@ -50,15 +50,15 @@ end
 _stencil(::AbstractArray) = false
 _stencil(gt::GridTensor) = allunique(stencil_indices(gt, 1))
 
-# The tensor of a bracket on the grid it is given, which is the form of GeometricBrackets 0.1.2.
-# `MultiIndexLazyArray` takes a function and an `NTuple{M, Int}` grid rather than a callable
-# struct such as an `Arakawa`, hence the closure and the `Int`.
+# The coefficient function takes Cartesian indices on the periodic grid. Explicit range axes
+# preserve the two-dimensional grid type without the integer-size axis constructor's vector.
+# `MultiIndexLazyArray` takes a function, so the closure accepts callable structs too.
 function PoissonTensor(DT, nx, nv, f)
     _check_bracket(f, DT, nx, nv)
-    g = (Int(nx), Int(nv))
+    nx, nv = Int(nx), Int(nv)
+    ax = MultiIndexAxis(1:nx, 1:nv)
     return PoissonTensor(GridTensor(
-        MultiIndexLazyArray(
-            DT, (I, J, K) -> f(I, J, K), g, g, g), 1))
+        MultiIndexLazyArray(DT, (I, J, K) -> f(I, J, K), ax, ax, ax), 1))
 end
 
 # a bracket that knows its grid and its element type, as an `Arakawa` does, adds a method that
@@ -168,7 +168,7 @@ Base.size(po::PoissonOperator, i) = size(po)[i]
 const _Wrapped2DGrid{DT} = PoissonTensor{DT,
     <:GridTensor{DT, 3,
         <:MultiIndexLazyArray{DT, 3,
-            <:Base.Callable, <:NTuple{3, MultiIndexAxis{2}}}}}
+            <:Any, <:NTuple{3, MultiIndexAxis{2}}}}}
 
 _nx(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[1]
 _nv(pt::_Wrapped2DGrid{DT}) where {DT} = size(axes(parent(pt.tensor), 1))[2]

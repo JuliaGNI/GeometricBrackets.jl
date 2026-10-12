@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-- `PoissonTensor` is now a `DiscreteBracket` that wraps a rank-3 array. The wrapped tensor carries
-  the grid and the element type, and the fields `nx`, `nv` and `f` are gone. Its parameters are
-  `{DT, TT}`, the type of the wrapped tensor, not the type of the coefficient function.
+- `PoissonTensor` is now a `DiscreteBracket` that wraps a rank-3 array. A wrapped `GridTensor`
+  carries the grid and the element type; a plain array carries only the element type. The fields
+  `nx`, `nv` and `f` are gone. Its parameters are `{DT, TT}`, `TT` being the type of the wrapped
+  tensor, bounded by `AbstractArray{DT, 3}`, not the type of the coefficient function.
   `PoissonTensor(DT, nx, nv, f)` still builds the tensor of a bracket on an `nx × nv` grid. The
-  change is breaking: `PoissonTensor{DT, Arakawa{DT}}` matches nothing.
+  change is breaking: `PoissonTensor{DT, Arakawa{DT}}` no longer forms, because an `Arakawa` is not
+  an `AbstractArray{DT, 3}`; `PoissonTensor{Float64, Arakawa{Float64}}` throws a `TypeError`.
 - `PoissonOperator` sums over the stencil of the tensor it is given, not a fixed 3 × 3 loop, so
   it follows the locality of that tensor.
 - MultiIndexArrays is a dependency again, for the `GridTensor` that a `PoissonTensor` wraps.

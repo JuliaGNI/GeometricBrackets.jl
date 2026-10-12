@@ -13,7 +13,7 @@ using Test
 # one seeded stream for the file, drawn from by every testset
 const PIN_RNG = Xoshiro(0x6f2c81de)
 
-# the grids and the spacings of `test/helpers/poisson_tensor_pins.jl`, which wrote the reference
+# the grids and spacings shared with the reference generator in `test/helpers/poisson_tensor_pins.jl`
 const PIN_TYPES = (Float32, Float64)
 const PIN_GRIDS = ((3, 4), (4, 5))
 const PIN_SPACINGS = (0.7, 1.3)
@@ -41,7 +41,7 @@ function allocations(f::F, a::A, b::B, c::C, d::D) where {F, A, B, C, D}
     (f(a, b, c, d); @allocated f(a, b, c, d))
 end
 
-"the Arakawa of a test grid, at the spacings the pin files were generated with"
+"the Arakawa of a test grid at the reference spacings"
 arakawa(nx, nv, DT) = Arakawa(nx, nv, DT(PIN_SPACINGS[1]), DT(PIN_SPACINGS[2]))
 
 "the tensor of a coefficient `f` over a grid of `extents`, with the stencil width `w`"
@@ -69,7 +69,7 @@ gridded(T, nx, nv) =
         @test w isa DiscreteBracket{DT}
         @test eltype(w) == DT
         @test size(w) == (N, N, N)
-        # the entries of the tensor 0.1.2 built, to the last bit, and its lazy tensor of width 1
+        # the pinned tensor entries, to the last bit, and the lazy stencil of width 1
         @test Array(w) == ref
         @test w.stencil
 
@@ -127,8 +127,7 @@ end
         @test w isa DiscreteBracket{DT}
         @test !w.stencil
 
-        # the full sum, over the whole axis: the fixed -1:1 stencil of the pre-split `poisson_apply`
-        # sees only a ninth of these terms
+        # the full sum over the whole axis includes terms outside a nearest-neighbour stencil
         full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:N, K in 1:N) for J in 1:N]
         @test maximum(abs, full) > 0
         @test poisson_apply(w, û, c) ≈ full rtol = N^2 * eps(DT)
@@ -179,10 +178,8 @@ end
     Cbad = random_antisymmetric_c(Xoshiro(0x2c7b41), 6)
     @test jacobi_residual(PoissonTensor(Cbad), z) != 0
 
-    # the same pair of assertions in the two precisions the part claims: the structure constants
-    # are 0, ±1 and ±1/2, exact in `Float32`, and the terms of the Jacobiator cancel there too
-    # (measured 0.0 on 1.13.1). The two sums take their terms in the same ascending `I`, so the
-    # entry-by-entry comparison is exact rather than approximate.
+    # These structure constants are exact in both precisions, and their Jacobiator terms cancel.
+    # The contractions sum in the same ascending `I`, so their entrywise comparison is exact.
     for DT in PIN_TYPES
         zDT = DT.(z)
         CD, CbadD = DT.(C), DT.(Cbad)
@@ -269,10 +266,7 @@ end
         @test T[1, 3, 1] == one(DT)
         w = wrapped((I, J, K) -> T[I[1], J[1], K[1]], (ng,), DT, 2)
         @test w.stencil
-        @test length(stencil_indices(
-            GridTensor(
-                MultiIndexLazyArray(DT, (I, J, K) -> zero(DT), (ng,), (ng,), (ng,)), 2),
-            1)) == 5
+        @test length(stencil_indices(w.tensor, 1)) == 5
 
         û, c, h = randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng), randn(PIN_RNG, DT, ng)
         full = [sum(û[I] * T[I, J, K] * c[K] for I in 1:ng, K in 1:ng) for J in 1:ng]
@@ -336,6 +330,7 @@ end
         @test poisson_apply(w64, û32, c32) isa Vector{Float64}
         @test poisson_apply(w32, û32, c32) isa Vector{Float32}
         @test eltype(poisson_matrix(w32, û32)) == Float32
+        @test poisson_apply(w32, û32, c64) isa Vector{Float64}
     end
 end
 
@@ -371,6 +366,9 @@ end
         po = PoissonOperator(w, randn(PIN_RNG, DT, N))
         û, c = randn(PIN_RNG, DT, N), randn(PIN_RNG, DT, N)
 
+        # Constructor inference must not rely on constant propagation of the grid sizes.
+        @test @inferred(PoissonTensor(DT, nx, nv, arakawa(nx, nv, DT))) isa
+              PoissonTensor{DT}
         @test @inferred(w[2, 3, 5]) == w[2, 3, 5]
         @test @inferred(po[2, 3]) == po[2, 3]
         # `_entry` accumulates from `zero(DT)`, not from a literal: a literal promotes a `Float32`

@@ -2,14 +2,12 @@
 #
 #     julia --startup-file=no test/helpers/poisson_tensor_pins.jl
 #
-# 0.2.0's `PoissonTensor` and 0.1.2's are the same name in the same package, so the two cannot be
-# loaded in one session: the reference is written out here, once, and `test/poisson_tensors.jl`
-# reads it back from `test/data/`. One file per element type and grid, one line `i j k value` per
-# nonzero entry of `Array(pt)`, in the order `Array` has it.
+# The pinned reference version is loaded in its own environment, separate from the checkout.
+# `test/poisson_tensors.jl` reads one file per element type and grid from `test/data/`, with one
+# line `i j k value` per nonzero entry of `Array(pt)`, ordered lexicographically by `(i, j, k)`.
 #
-# The grids and the spacings are those of §5V.P8's checks: `3 × 4` and `4 × 5` are non-square, so
-# an `nx`/`nv` swap shows on them, and neither of `0.7` and `1.3` is a power of two, so a rounded
-# coefficient is in the reference.
+# The grids `3 × 4` and `4 × 5` are non-square, so an `nx`/`nv` swap shows on them. Neither
+# spacing, `0.7` or `1.3`, is a power of two, so the reference includes rounded coefficients.
 import Pkg
 
 const GRIDS = ((3, 4), (4, 5))
