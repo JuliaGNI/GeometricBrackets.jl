@@ -18,6 +18,41 @@ end
 
 const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
 
+# `f(a, b, c, d)` with the bytes it allocates after one warm call, through a fixed-arity barrier
+# whose arguments have concrete types, so that the reading counts `f`'s allocations and not those
+# of a call from testset scope.
+function allocations(f::F, a::A, b::B, c::C, d::D) where {F, A, B, C, D}
+    (f(a, b, c, d); @allocated f(a, b, c, d))
+end
+
+# The analytic state of the convergence testset below on an n × n grid: its bracket, the state
+# `h` and the vector `f`.
+function analytic_input(n)
+    h₁, h₂ = 1 / n, 2 / n
+    x = range(0, 1 - h₁, length = n)
+    v = range(-1, 1 - h₂, length = n)
+    f = vec([1 / (2π) * cos(_x * 2π) * (cos(_v * 2π) - 1) for _x in x, _v in v])
+    h = vec([sin(_x * 2π) * exp(-16 * _v^2) for _x in x, _v in v])
+    return Arakawa(n, n, h₁, h₂), h, f
+end
+
+# A copy of an input of `poisson_apply` in `Float32`: the bracket at the rounded spacings, and
+# the two vectors rounded.
+function float32_input(b::Arakawa, û, c)
+    b32 = Arakawa(b.nx, b.nv, Float32(b.hx), Float32(b.hv))
+    return b32, Float32.(û), Float32.(c)
+end
+
+"the exception that `f()` throws, or `nothing` where it returns"
+function thrown(f)
+    try
+        f()
+    catch err
+        return err
+    end
+    return nothing
+end
+
 @testset "$(rpad("Arakawa Bracket Tests",80))" begin
     @testset "$(rpad("Arakawa is a DiscreteBracket, antisymmetric to the last bit",76))" begin
         for (nx, nv) in ARAKAWA_GRIDS
@@ -196,5 +231,106 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
             zeros(15), randn(15), randn(4), randn(5), ci, li, 0.2, 0.5)
         @test_throws DimensionMismatch _apply_P_ϕ!(
             zeros(15), randn(15), randn(3), randn(4), ci, li, 0.2, 0.5)
+    end
+
+    @testset "$(rpad("poisson_apply! writes poisson_apply into Pc, in Float64 and Float32",76))" begin
+        # the inputs of `poisson_apply` and of the Arakawas above: the random states of the
+        # test grids, the analytic states, and the spacings of every real type
+        inputs = Any[(Arakawa(nx, nv, 1 / nx, 2 / nv), randn(nx * nv), randn(nx * nv))
+                     for (nx, nv) in ARAKAWA_GRIDS]
+        append!(inputs, [analytic_input(n) for n in (32, 64, 128, 512)])
+        spacings = ((1, 2), (1, 2.0), (0.1f0, 0.2), (0.1f0, 0.2f0), (1 // 6, 2 // 7))
+        append!(inputs, [(Arakawa(6, 7, hx, hv), randn(42), randn(42))
+                         for (hx, hv) in spacings])
+        float32_inputs = [float32_input(x...) for x in inputs]
+        # a Float32 bracket on Float64 vectors, whose result is Float64
+        mixed = (Arakawa(5, 4, 0.2f0, 0.5f0), randn(20), randn(20))
+        for (b, û, c) in [inputs; float32_inputs; [mixed]]
+            expected = poisson_apply(b, û, c)
+            # every entry is overwritten, whatever Pc held
+            Pc = fill!(similar(expected), NaN)
+            @test poisson_apply!(Pc, b, û, c) === Pc
+            @test Pc == expected
+            # against hx hv [c, û] in Float64, which shares the kernel but not the scaling
+            ref = b.hx * b.hv * arakawa_jacobian(c, û, b.nx, b.nv, b.hx, b.hv)
+            @test Pc ≈ ref rtol=(eltype(Pc) == Float32 ? 1e-5 : 1e-14)
+        end
+        @test all(x -> eltype(poisson_apply(x...)) == Float32, float32_inputs)
+        @test eltype(poisson_apply(mixed...)) == Float64
+    end
+
+    @testset "$(rpad("poisson_apply allocates Pc and calls poisson_apply!",76))" begin
+        b = Arakawa(5, 4, 0.2, 0.5)
+        û, c = randn(20), randn(20)
+        lowered = only(code_lowered(poisson_apply, (typeof(b), typeof(û), typeof(c))))
+        @test occursin("poisson_apply!", string(lowered))
+    end
+
+    @testset "$(rpad("poisson_apply! allocates nothing",76))" begin
+        for DT in (Float64, Float32), (nx, nv) in ARAKAWA_GRIDS
+
+            b = Arakawa(nx, nv, DT(1 / nx), DT(2 / nv))
+            û, c, Pc = randn(DT, nx * nv), randn(DT, nx * nv), zeros(DT, nx * nv)
+            # Coverage instrumentation allocates on every counted line, so under it the assertion
+            # does not run rather than being weakened.
+            if Base.JLOptions().code_coverage == 0
+                @test allocations(poisson_apply!, Pc, b, û, c) == 0
+            end
+            # a control through the same barrier, on the same arguments: the barrier sees the
+            # allocation of the result, so the zero above is not vacuous
+            @test allocations((Pc, b, û, c) -> poisson_apply(b, û, c), Pc, b, û, c) > 0
+        end
+    end
+
+    @testset "$(rpad("poisson_apply! refuses other brackets, lengths, types and aliases",76))" begin
+        b = Arakawa(4, 3, 0.25, 2 / 3)
+        N = 12
+        û, c = randn(N), randn(N)
+
+        # only an Arakawa has a method
+        @test_throws MethodError poisson_apply!(
+            zeros(N), ConstantBracket(poisson_matrix(b, û)), û, c)
+        @test_throws MethodError poisson_apply!(zeros(N), PoissonTensor(Float64, 4, 3, b), û, c)
+
+        # a Pc, û or c of another length than nx nv
+        lengths = [
+            (zeros(N + 1), û, c), (zeros(N), randn(N - 1), c), (zeros(N), û, randn(N + 1))]
+        for (Pc_, û_, c_) in lengths
+            err = thrown(() -> poisson_apply!(Pc_, b, û_, c_))
+            @test err isa DimensionMismatch
+            @test startswith(err.msg, "an Arakawa bracket on a 4 × 3 grid")
+        end
+
+        # a Pc of another element type than poisson_apply's result, narrower or wider
+        b32 = Arakawa(4, 3, 0.25f0, 2.0f0 / 3)
+        types = [(zeros(Float32, N), b, "Float32"), (zeros(BigFloat, N), b, "BigFloat"),
+            (zeros(Float32, N), b32, "Float32")]
+        for (Pc_, b_, ET) in types
+            err = thrown(() -> poisson_apply!(Pc_, b_, û, c))
+            @test err isa ArgumentError
+            @test startswith(err.msg, "poisson_apply! needs a Pc of element type Float64")
+            @test occursin("got $ET", err.msg)
+        end
+        Pc32 = zeros(Float32, N)
+        @test poisson_apply!(Pc32, b32, Float32.(û), Float32.(c)) == poisson_apply(
+            b32, Float32.(û), Float32.(c))
+
+        # a Pc that shares memory with û or c, as the same vector or as overlapping views
+        x, y = randn(N), randn(2N)
+        aliases = [(x, x, c), (x, û, x), (view(y, 1:N), view(y, 2:(N + 1)), c),
+            (view(y, 1:N), û, view(y, N:(2N - 1)))]
+        for (Pc_, û_, c_) in aliases
+            err = thrown(() -> poisson_apply!(Pc_, b, û_, c_))
+            @test err isa ArgumentError
+            @test startswith(err.msg, "Pc shares memory with û or c")
+        end
+        # disjoint views of one array do not alias
+        Pc, ŷ = view(y, 1:N), view(y, (N + 1):(2N))
+        @test poisson_apply!(Pc, b, ŷ, c) == poisson_apply(b, collect(ŷ), c)
+
+        # a vector whose axis is 0:11 rather than 1:12, refused by the kernel
+        err = thrown(() -> poisson_apply!(zeros(N), b, û, Base.IdentityUnitRange(0:11)))
+        @test err isa ArgumentError
+        @test occursin("offset arrays are not supported", err.msg)
     end
 end

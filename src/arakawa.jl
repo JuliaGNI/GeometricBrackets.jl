@@ -192,13 +192,40 @@ function poisson_matrix(b::Arakawa{DT}, û::AbstractVector) where {DT}
     return P
 end
 
-# (P(û) c)_J = hx hv Σ_{I,K} û_I A(I, J, K) c_K = hx hv [c, û]_J, by the cyclic symmetry of
-# Arakawa's coefficients, and `_apply_P_h!` evaluates the Jacobian [c, û] on the stencil.
 function poisson_apply(b::Arakawa{DT}, û::AbstractVector, c::AbstractVector) where {DT}
+    Pc = zeros(promote_type(DT, eltype(û), eltype(c)), b.nx * b.nv)
+    return poisson_apply!(Pc, b, û, c)
+end
+
+"""
+    poisson_apply!(Pc, b::Arakawa, û, c)
+
+Write the product ``\\mathbb{P}(\\hat{u}) \\, c`` of [`poisson_apply`](@ref) into `Pc`, and
+return `Pc`. It builds no matrix, and on `Vector`s it allocates nothing.
+
+`Pc`, `û` and `c` each hold `nx * nv` values, or a `DimensionMismatch` is thrown. `Pc` has the
+element type of `poisson_apply`'s result, `promote_type(DT, eltype(û), eltype(c))` for an
+`Arakawa{DT}`; another element type throws an `ArgumentError`. A `Pc` that shares memory with
+`û` or `c`, as `Base.mightalias` decides, throws an `ArgumentError` too, because the stencil
+reads both while it writes `Pc`.
+
+Only `Arakawa` has a method. On any other [`DiscreteBracket`](@ref) the call throws a
+`MethodError`.
+"""
+function poisson_apply!(Pc::AbstractVector, b::Arakawa{DT}, û::AbstractVector,
+        c::AbstractVector) where {DT}
+    _check_state(b, Pc)
     _check_state(b, û)
     _check_state(b, c)
+    T = promote_type(DT, eltype(û), eltype(c))
+    eltype(Pc) == T || throw(ArgumentError(
+        "poisson_apply! needs a Pc of element type $T, the type of poisson_apply's result, " *
+        "got $(eltype(Pc))"))
+    (Base.mightalias(Pc, û) || Base.mightalias(Pc, c)) && throw(ArgumentError(
+        "Pc shares memory with û or c, which the stencil reads while it writes Pc"))
+    # (P(û) c)_J = hx hv Σ_{I,K} û_I A(I, J, K) c_K = hx hv [c, û]_J, by the cyclic symmetry of
+    # Arakawa's coefficients, and `_apply_P_h!` evaluates the Jacobian [c, û] on the stencil.
     ci = CartesianIndices((b.nx, b.nv))
-    Pc = zeros(promote_type(DT, eltype(û), eltype(c)), length(ci))
     _apply_P_h!(Pc, c, û, ci, LinearIndices(ci), b.hx, b.hv)
     return rmul!(Pc, b.hx * b.hv)
 end

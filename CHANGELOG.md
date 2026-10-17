@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gives the matrix of the bracket at a state `û`, and `poisson_derivative` the tensor itself, which
   is constant because the bracket is linear in the state. `poisson_apply` is matrix-free: it builds
   no matrix and returns the product of the bracket matrix with a vector `c`.
+- `poisson_apply!(Pc, b, û, c)` for an `Arakawa` bracket writes the product of `poisson_apply`
+  into `Pc`. On `Vector`s it allocates nothing, so a time step or a right-hand side can call it
+  repeatedly. `Pc` must have the element type of `poisson_apply`'s result and must not share
+  memory with `û` or `c`. `poisson_apply` on an `Arakawa` allocates its result and calls it. On any
+  other bracket `poisson_apply!` throws a `MethodError`.
 
 ### Changed
 
