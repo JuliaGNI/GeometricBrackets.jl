@@ -32,8 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `poisson_apply!(Pc, b, û, c)` for an `Arakawa` bracket writes the product of `poisson_apply`
   into `Pc`. On `Vector`s it allocates nothing, so a time step or a right-hand side can call it
   repeatedly. `Pc` must have the element type of `poisson_apply`'s result and must not share
-  memory with `û` or `c`. `poisson_apply` on an `Arakawa` allocates its result and calls it. On any
-  other bracket `poisson_apply!` throws a `MethodError`.
+  memory with `û` or `c`; otherwise it throws an `ArgumentError`.
 
 ### Changed
 

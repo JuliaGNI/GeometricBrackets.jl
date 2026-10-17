@@ -193,7 +193,7 @@ function poisson_matrix(b::Arakawa{DT}, û::AbstractVector) where {DT}
 end
 
 function poisson_apply(b::Arakawa{DT}, û::AbstractVector, c::AbstractVector) where {DT}
-    Pc = zeros(promote_type(DT, eltype(û), eltype(c)), b.nx * b.nv)
+    Pc = Vector{promote_type(DT, eltype(û), eltype(c))}(undef, b.nx * b.nv)
     return poisson_apply!(Pc, b, û, c)
 end
 
