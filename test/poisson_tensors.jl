@@ -9,6 +9,8 @@ using MultiIndexArrays: MultiIndexArrays, GridTensor, MultiIndexLazyArray, stenc
 using Random
 using Test
 
+include("helpers/allocations.jl")
+
 # one seeded stream for the file, drawn from by every testset
 const RNG = Xoshiro(0x6f2c81de)
 
@@ -22,15 +24,6 @@ const SPACINGS = (0.7, 1.3)
 function coefficients(f, nx, nv)
     g = CartesianIndices((nx, nv))
     return reshape([f(I, J, K) for I in g, J in g, K in g], nx * nv, nx * nv, nx * nv)
-end
-
-# `f(x)` with the bytes it allocates after one warm call, through a fixed-arity barrier whose
-# arguments have concrete types: an `@allocated` at testset scope, or through a closure over a loop
-# variable, boxes on Julia 1.11 and would fail the `min` job on its own.
-allocations(f::F, a::A) where {F, A} = (f(a); @allocated f(a))
-allocations(f::F, a::A, b::B, c::C) where {F, A, B, C} = (f(a, b, c); @allocated f(a, b, c))
-function allocations(f::F, a::A, b::B, c::C, d::D) where {F, A, B, C, D}
-    (f(a, b, c, d); @allocated f(a, b, c, d))
 end
 
 "the Arakawa of a test grid at the reference spacings"

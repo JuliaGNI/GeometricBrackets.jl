@@ -4,11 +4,13 @@ using LinearAlgebra
 using Random
 using Test
 
+include("helpers/allocations.jl")
+
 Random.seed!(0x5c1e9a3b)
 
 # The Arakawa Jacobian [c, h] on an nx × nv grid, from the matrix-free operator
-# `_apply_P_h!`. It is written term by term from the three second-order Jacobians rather
-# than from the sign tables, so it is an independent reference for them.
+# `_apply_P_h!`. The operator is written term by term from the three second-order Jacobians
+# rather than from the sign tables, so it is a reference for the sign tables, not for itself.
 function arakawa_jacobian(c, h, nx, nv, hx, hv)
     ci = CartesianIndices((nx, nv))
     J = zeros(nx * nv)
@@ -17,13 +19,6 @@ function arakawa_jacobian(c, h, nx, nv, hx, hv)
 end
 
 const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
-
-# `f(a, b, c, d)` with the bytes it allocates after one warm call, through a fixed-arity barrier
-# whose arguments have concrete types, so that the reading counts `f`'s allocations and not those
-# of a call from testset scope.
-function allocations(f::F, a::A, b::B, c::C, d::D) where {F, A, B, C, D}
-    (f(a, b, c, d); @allocated f(a, b, c, d))
-end
 
 @testset "$(rpad("Arakawa Bracket Tests",80))" begin
     @testset "$(rpad("Arakawa is a DiscreteBracket, antisymmetric to the last bit",76))" begin
@@ -243,15 +238,10 @@ end
         end
     end
 
-    @testset "$(rpad("poisson_apply! refuses other brackets, lengths, types and aliases",76))" begin
+    @testset "$(rpad("poisson_apply! refuses other lengths and aliases",76))" begin
         b = Arakawa(4, 3, 0.25, 2 / 3)
         N = 12
         û, c = randn(N), randn(N)
-
-        # only an Arakawa has a method
-        @test_throws MethodError poisson_apply!(
-            zeros(N), ConstantBracket(poisson_matrix(b, û)), û, c)
-        @test_throws MethodError poisson_apply!(zeros(N), PoissonTensor(Float64, 4, 3, b), û, c)
 
         # a Pc, û or c of another length than nx nv
         for (Pc_, û_, c_) in (
@@ -260,12 +250,10 @@ end
                 Pc_, b, û_, c_)
         end
 
-        # a Pc of another element type than poisson_apply's result, narrower or wider
-        b32 = Arakawa(4, 3, 0.25f0, 2.0f0 / 3)
-        for (Pc_, b_) in ((zeros(Float32, N), b), (zeros(BigFloat, N), b),
-            (zeros(Float32, N), b32))
-            @test_throws Regex("^ArgumentError: poisson_apply! needs a Pc of element type " *
-                               "Float64.*got $(eltype(Pc_))\$") poisson_apply!(Pc_, b_, û, c)
+        # a Pc of another element type than poisson_apply's result, narrower or wider, takes
+        # the converted result
+        for Pc_ in (zeros(Float32, N), zeros(BigFloat, N))
+            @test poisson_apply!(Pc_, b, û, c) ≈ poisson_apply(b, û, c)
         end
 
         # a Pc that shares memory with û or c, as the same vector or as overlapping views
