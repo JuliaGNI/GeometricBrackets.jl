@@ -4,11 +4,13 @@ using LinearAlgebra
 using Random
 using Test
 
+include("helpers/allocations.jl")
+
 Random.seed!(0x5c1e9a3b)
 
 # The Arakawa Jacobian [c, h] on an nx × nv grid, from the matrix-free operator
-# `_apply_P_h!`. It is written term by term from the three second-order Jacobians rather
-# than from the sign tables, so it is an independent reference for them.
+# `_apply_P_h!`. The operator is written term by term from the three second-order Jacobians
+# rather than from the sign tables, so it is a reference for the sign tables, not for itself.
 function arakawa_jacobian(c, h, nx, nv, hx, hv)
     ci = CartesianIndices((nx, nv))
     J = zeros(nx * nv)
@@ -196,5 +198,73 @@ const ARAKAWA_GRIDS = ((3, 3), (5, 4), (6, 7))
             zeros(15), randn(15), randn(4), randn(5), ci, li, 0.2, 0.5)
         @test_throws DimensionMismatch _apply_P_ϕ!(
             zeros(15), randn(15), randn(3), randn(4), ci, li, 0.2, 0.5)
+    end
+
+    @testset "$(rpad("poisson_apply! writes P(û) c into Pc, in Float64 and Float32",76))" begin
+        # the random states of the test grids in Float64 and Float32, the spacings of every
+        # real type, and a Float32 bracket on Float64 vectors
+        inputs = Any[(Arakawa(nx, nv, DT(1 / nx), DT(2 / nv)), randn(DT, nx * nv),
+                         randn(DT, nx * nv))
+                     for DT in (Float64, Float32) for (nx, nv) in ARAKAWA_GRIDS]
+        for (hx, hv) in ((1, 2), (1, 2.0), (0.1f0, 0.2), (0.1f0, 0.2f0), (1 // 6, 2 // 7))
+            push!(inputs, (Arakawa(6, 7, hx, hv), randn(42), randn(42)))
+        end
+        push!(inputs, (Arakawa(5, 4, 0.2f0, 0.5f0), randn(20), randn(20)))
+        for (b, û, c) in inputs
+            expected = poisson_apply(b, û, c)
+            # every entry is overwritten, whatever Pc held
+            Pc = fill!(similar(expected), NaN)
+            @test poisson_apply!(Pc, b, û, c) === Pc
+            @test Pc == expected
+            # against the assembled matrix, which does not use the stencil kernel
+            @test Pc ≈ poisson_matrix(b, û) * c
+            @test eltype(Pc) == (eltype(û) == Float32 ? Float32 : Float64)
+        end
+    end
+
+    @testset "$(rpad("poisson_apply! allocates nothing",76))" begin
+        for DT in (Float64, Float32), (nx, nv) in ARAKAWA_GRIDS
+
+            b = Arakawa(nx, nv, DT(1 / nx), DT(2 / nv))
+            û, c, Pc = randn(DT, nx * nv), randn(DT, nx * nv), zeros(DT, nx * nv)
+            # Coverage instrumentation allocates on every counted line, so under it the assertion
+            # does not run rather than being weakened.
+            if Base.JLOptions().code_coverage == 0
+                @test allocations(poisson_apply!, Pc, b, û, c) == 0
+            end
+            # a control through the same barrier, on the same arguments: the barrier sees the
+            # allocation of the result, so the zero above is not vacuous
+            @test allocations((Pc, b, û, c) -> poisson_apply(b, û, c), Pc, b, û, c) > 0
+        end
+    end
+
+    @testset "$(rpad("poisson_apply! refuses other lengths and aliases",76))" begin
+        b = Arakawa(4, 3, 0.25, 2 / 3)
+        N = 12
+        û, c = randn(N), randn(N)
+
+        # a Pc, û or c of another length than nx nv
+        for (Pc_, û_, c_) in (
+            (zeros(N + 1), û, c), (zeros(N), randn(N - 1), c), (zeros(N), û, randn(N + 1)))
+            @test_throws r"^DimensionMismatch: an Arakawa bracket on a 4 × 3 grid" poisson_apply!(
+                Pc_, b, û_, c_)
+        end
+
+        # a Pc of another element type than poisson_apply's result, narrower or wider, takes
+        # the converted result
+        for Pc_ in (zeros(Float32, N), zeros(BigFloat, N))
+            @test poisson_apply!(Pc_, b, û, c) ≈ poisson_apply(b, û, c)
+        end
+
+        # a Pc that shares memory with û or c, as the same vector or as overlapping views
+        x, y = randn(N), randn(2N)
+        for (Pc_, û_, c_) in ((x, x, c), (x, û, x), (view(y, 1:N), view(y, 2:(N + 1)), c),
+            (view(y, 1:N), û, view(y, N:(2N - 1))))
+            @test_throws r"^ArgumentError: Pc shares memory with û or c" poisson_apply!(
+                Pc_, b, û_, c_)
+        end
+        # disjoint views of one array do not alias
+        Pc, ŷ = view(y, 1:N), view(y, (N + 1):(2N))
+        @test poisson_apply!(Pc, b, ŷ, c) == poisson_apply(b, collect(ŷ), c)
     end
 end

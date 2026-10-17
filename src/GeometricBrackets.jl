@@ -63,7 +63,7 @@ include("exact.jl")
 
 export DiscreteBracket, ConstantBracket, AffineBracket, GaugedBracket, MiuraBracket
 export kernel_operator
-export poisson_matrix, poisson_apply, poisson_tensor, isantisymmetric,
+export poisson_matrix, poisson_apply, poisson_apply!, poisson_tensor, isantisymmetric,
        jacobi_residual, structure_constant_residual
 
 include("brackets.jl")

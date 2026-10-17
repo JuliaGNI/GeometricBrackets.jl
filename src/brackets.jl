@@ -60,6 +60,18 @@ function poisson_apply(b::DiscreteBracket, û::AbstractVector, c::AbstractVector
     poisson_matrix(b, û) * c
 end
 
+"""
+    poisson_apply!(Pc, bracket, û, c)
+
+Write the product ``\\mathbb{P}(\\hat{u}) \\, c`` of [`poisson_apply`](@ref) into `Pc`, and
+return `Pc`. This method copies the result of `poisson_apply`, so it allocates as much; a
+bracket that can write `Pc` directly, such as [`Arakawa`](@ref), has its own method.
+"""
+function poisson_apply!(
+        Pc::AbstractVector, b::DiscreteBracket, û::AbstractVector, c::AbstractVector)
+    Pc .= poisson_apply(b, û, c)
+end
+
 @doc raw"""
     poisson_derivative(bracket, û)
 

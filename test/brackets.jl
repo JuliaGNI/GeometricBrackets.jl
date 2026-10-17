@@ -215,4 +215,16 @@ Random.seed!(0x5c1e9a3b)
         @test_throws DimensionMismatch GeometricBrackets.AffineBracket(
             s, 2, randn(3, 3), zeros(12, 12))
     end
+
+    @testset "$(rpad("poisson_apply! writes poisson_apply into Pc on any bracket",76))" begin
+        N = 12
+        s = SplineSpace(UniformMesh(N, 2π), 3)
+        û, c = randn(N), randn(N)
+        for b in (kdv_bracket_1(s), kdv_bracket_2(s))
+            Pc = fill(NaN, N)
+            @test poisson_apply!(Pc, b, û, c) === Pc
+            @test Pc ≈ poisson_matrix(b, û) * c
+            @test_throws DimensionMismatch poisson_apply!(zeros(N + 1), b, û, c)
+        end
+    end
 end
