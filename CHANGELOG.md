@@ -52,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tested, and the wider range claimed support that does not hold: CairoMakie 0.12 fails to
   precompile on Julia 1.13. A user who pins CairoMakie 0.12 alongside this package now gets a
   resolver error rather than a precompilation failure.
+- `[compat] StaticArrays` is `"1.9.13"`, raised from `"1"`. This is a compat-only change. The new
+  floor is the one SimpleSolvers 0.14.1 already requires, so no user loses a version that could
+  install. The Downgrade job's `forcedeps` check now passes for StaticArrays.
 
 ### Fixed
 
