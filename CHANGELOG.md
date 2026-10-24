@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — targeting 0.4.0
+
+The Julia floor rises from 1.11 to 1.12, so this version cannot be installed on Julia 1.11.
+
+### Changed
+
+- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A breaking change under
+  this package's pre-1.0 convention: a caller on Julia 1.11 can no longer install this version.
+  No code in `src/` changes. The allocation barrier in `test/helpers/allocations.jl` stays: on
+  Julia 1.12.7 a bare `@allocated w[2, 3, 5]` or `@allocated po[2, 3]` in a `@testset` body reads
+  16 bytes — that body is top-level code, so the call is dynamically dispatched and its isbits
+  result is boxed — and the same call through the barrier reads 0.
+
 ## [0.3.0] — 2026-10-17
 
 A `PoissonTensor` now wraps a rank-3 array instead of building one from a bracket, and
