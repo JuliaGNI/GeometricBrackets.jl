@@ -14,9 +14,9 @@ The Julia floor rises from 1.11 to 1.12, so this version cannot be installed on 
 - **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A breaking change under
   this package's pre-1.0 convention: a caller on Julia 1.11 can no longer install this version.
   No code in `src/` changes. The allocation barrier in `test/helpers/allocations.jl` stays: on
-  Julia 1.12.7 a bare `@allocated w[2, 3, 5]` or `@allocated po[2, 3]` in a `@testset` body still
-  reads 16 bytes for an indexing that allocates nothing, and the same call through the barrier
-  reads 0. Its comment now states that reading, not a claim about Julia 1.11.
+  Julia 1.12.7 a bare `@allocated w[2, 3, 5]` or `@allocated po[2, 3]` in a `@testset` body reads
+  16 bytes — that body is top-level code, so the call is dynamically dispatched and its isbits
+  result is boxed — and the same call through the barrier reads 0.
 
 ## [0.3.0] — 2026-10-17
 
