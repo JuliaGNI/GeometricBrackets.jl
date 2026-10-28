@@ -465,6 +465,39 @@ function weyl_vlasov_matrix(
     return A
 end
 
+function _spectral_frechet_matrix(
+        φ::F, dφ::DF, w_vec::AbstractVector{T},
+        E::Vector{Matrix{Complex{T}}}) where {F, DF, T <: Real}
+    M = length(w_vec)
+    N = size(E[1], 1)
+    W = zeros(Complex{T}, N, N)
+    for a in 1:M
+        W .+= w_vec[a] .* E[a]
+    end
+    eig = eigen(Hermitian(W))
+    λ = eig.values
+    U = eig.vectors
+    L = Matrix{T}(undef, N, N)
+    for k in 1:N, j in 1:N
+
+        if abs(λ[j] - λ[k]) < T(1e-12)
+            λbar = (λ[j] + λ[k]) / 2
+            L[j, k] = dφ(λbar)
+        else
+            L[j, k] = (φ(λ[j]) - φ(λ[k])) / (λ[j] - λ[k])
+        end
+    end
+    E_hat = [U' * E[a] * U for a in 1:M]
+    Jac = zeros(T, M, M)
+    for b in 1:M
+        D_Eb = L .* E_hat[b]
+        for a in 1:M
+            Jac[a, b] = real(tr(E_hat[a]' * D_Eb))
+        end
+    end
+    return Jac
+end
+
 @doc raw"""
     spectral_pushforward_bracket(φ, dφ, w::AbstractVector{T}; ħ::Real = one(T)) where {T}
 
@@ -481,43 +514,15 @@ Fréchet derivative ``D\varphi(W)`` acts on eigenbasis entries by the logarithmi
 Poisson bracket on ``\mathfrak{u}(N)^*`` which satisfies the Jacobi identity at every ``N``.
 """
 function spectral_pushforward_bracket(
-        φ, dφ, w::AbstractVector{T}; ħ::Real = one(T)) where {T <: Real}
+        φ::F, dφ::DF, w::AbstractVector{T};
+        ħ::Real = one(T)) where {F, DF, T <: Real}
     M = length(w)
     N = isqrt(M)
     N * N == M || throw(DimensionMismatch("length(w) = $M must be a perfect square N^2"))
     E = un_hermitian_basis(N, T)
     C = un_structure_constants(N, T; ħ = ħ)
 
-    function _frechet_matrix(w_vec)
-        W = zeros(Complex{T}, N, N)
-        for a in 1:M
-            W .+= w_vec[a] .* E[a]
-        end
-        F = eigen(Hermitian(W))
-        λ = F.values
-        U = F.vectors
-        L = Matrix{T}(undef, N, N)
-        for k in 1:N, j in 1:N
-
-            if abs(λ[j] - λ[k]) < T(1e-12)
-                λbar = (λ[j] + λ[k]) / 2
-                L[j, k] = dφ(λbar)
-            else
-                L[j, k] = (φ(λ[j]) - φ(λ[k])) / (λ[j] - λ[k])
-            end
-        end
-        E_hat = [U' * E[a] * U for a in 1:M]
-        Jac = zeros(T, M, M)
-        for b in 1:M
-            D_Eb = L .* E_hat[b]
-            for a in 1:M
-                Jac[a, b] = real(tr(E_hat[a]' * D_Eb))
-            end
-        end
-        return Jac
-    end
-
-    Jac = _frechet_matrix(w)
+    Jac = _spectral_frechet_matrix(φ, dφ, w, E)
     Jac_inv = inv(Jac)
     J_w = lie_poisson_matrix(C, w)
     J_v = Jac * J_w * Jac'
@@ -530,8 +535,10 @@ function spectral_pushforward_bracket(
         e_k[k] = ε
         wp = w + e_k
         wm = w - e_k
-        Jp = _frechet_matrix(wp) * lie_poisson_matrix(C, wp) * _frechet_matrix(wp)'
-        Jm = _frechet_matrix(wm) * lie_poisson_matrix(C, wm) * _frechet_matrix(wm)'
+        Jac_p = _spectral_frechet_matrix(φ, dφ, wp, E)
+        Jac_m = _spectral_frechet_matrix(φ, dφ, wm, E)
+        Jp = Jac_p * lie_poisson_matrix(C, wp) * Jac_p'
+        Jm = Jac_m * lie_poisson_matrix(C, wm) * Jac_m'
         dJ_w[k, :, :] .= (Jp .- Jm) ./ (2ε)
     end
     dJ_v = zeros(T, M, M, M)
