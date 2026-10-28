@@ -345,31 +345,34 @@ end
 let N = 3, M = 9
     rng = MersenneTwister(77)
     w = 0.25 .* randn(rng, M)
-    J_bkm, dJ_bkm = spectral_pushforward_bracket(λ -> 0.5 * exp(2λ), λ -> exp(2λ), w)
+    J_bkm, dJ_bkm = spectral_pushforward_bracket(
+        λ -> 0.5 * exp(2λ), λ -> exp(2λ), λ -> 2 * exp(2λ), w)
     jac_bkm = jacobi_residual(J_bkm, dJ_bkm)
 
-    # Naive matrix structure-function bracket tr(W^2 [F_W, G_W]) on u(3)*
+    w_big = [BigFloat(2 * (-1)^k) / BigFloat(10 * (k + 1)) for k in 1:M]
+    J_bkm_big, dJ_bkm_big = spectral_pushforward_bracket(
+        λ -> exp(2λ) / 2, λ -> exp(2λ), λ -> 2 * exp(2λ), w_big)
+    jac_bkm_big = Float64(jacobi_residual(J_bkm_big, dJ_bkm_big))
+
+    # Naive matrix structure-function bracket tr(W^2 [F_W, G_W]) on u(3)* (analytical derivative)
     E = un_hermitian_basis(N)
     C_un = un_structure_constants(N)
-    function _c_quad_coords(w_vec)
-        W = sum(w_vec[a] .* E[a] for a in 1:M)
-        W2 = W * W
-        return [real(tr(E[a] * W2)) for a in 1:M]
-    end
-    J_naive = lie_poisson_matrix(C_un, _c_quad_coords(w))
+    W = sum(w[a] .* E[a] for a in 1:M)
+    W2 = W * W
+    c_quad = [real(tr(E[a] * W2)) for a in 1:M]
+    J_naive = lie_poisson_matrix(C_un, c_quad)
     dJ_naive = zeros(Float64, M, M, M)
-    ε = 1e-6
     for k in 1:M
-        ek = zeros(Float64, M)
-        ek[k] = ε
-        Jp = lie_poisson_matrix(C_un, _c_quad_coords(w + ek))
-        Jm = lie_poisson_matrix(C_un, _c_quad_coords(w - ek))
-        dJ_naive[k, :, :] .= (Jp .- Jm) ./ (2ε)
+        dW2_k = E[k] * W + W * E[k]
+        dc_k = [real(tr(E[a] * dW2_k)) for a in 1:M]
+        dJ_naive[k, :, :] .= lie_poisson_matrix(C_un, dc_k)
     end
     jac_naive = jacobi_residual(J_naive, dJ_naive)
 
-    check("Logarithmic-mean (BKM) spectral pushforward on u(3)*: satisfies Jacobi",
-        jac_bkm < 1e-8, @sprintf("jac_res = %.2e", jac_bkm))
+    check(
+        "Logarithmic-mean (BKM) spectral pushforward on u(3)*: exact Jacobi (Float64 & BigFloat)",
+        jac_bkm < 1e-14 && jac_bkm_big < 1e-70,
+        @sprintf("jac_f64 = %.2e, jac_big = %.2e", jac_bkm, jac_bkm_big))
     check(
         "Naive matrix structure-function tr(W^2[F_W,G_W]) on u(3)*: fails Jacobi (control)",
         jac_naive > 0.1, @sprintf("jac_res = %.3e", jac_naive))

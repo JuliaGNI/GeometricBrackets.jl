@@ -465,86 +465,179 @@ function weyl_vlasov_matrix(
     return A
 end
 
-function _spectral_frechet_matrix(
-        φ::F, dφ::DF, w_vec::AbstractVector{T},
-        E::Vector{Matrix{Complex{T}}}) where {F, DF, T <: Real}
-    M = length(w_vec)
-    N = size(E[1], 1)
-    W = zeros(Complex{T}, N, N)
-    for a in 1:M
-        W .+= w_vec[a] .* E[a]
-    end
+function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: LinearAlgebra.BlasReal}
     eig = eigen(Hermitian(W))
-    λ = eig.values
-    U = eig.vectors
-    L = Matrix{T}(undef, N, N)
-    for k in 1:N, j in 1:N
+    return eig.values, eig.vectors
+end
 
-        if abs(λ[j] - λ[k]) < T(1e-12)
-            λbar = (λ[j] + λ[k]) / 2
-            L[j, k] = dφ(λbar)
-        else
-            L[j, k] = (φ(λ[j]) - φ(λ[k])) / (λ[j] - λ[k])
+function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: Real}
+    N = size(W, 1)
+    A = Matrix{Complex{T}}(W)
+    for j in 1:N, i in 1:N
+
+        A[i, j] = (W[i, j] + conj(W[j, i])) / 2
+    end
+    U = Matrix{Complex{T}}(I, N, N)
+    tol = eps(T) * T(10)
+    for _ in 1:60
+        off = zero(T)
+        for q in 2:N, p in 1:(q - 1)
+
+            off = max(off, abs(A[p, q]))
+        end
+        off <= tol && break
+        for q in 2:N, p in 1:(q - 1)
+
+            apq = A[p, q]
+            r = abs(apq)
+            r <= tol && continue
+            phase = apq / r
+            tau = real(A[q, q] - A[p, p]) / (2 * r)
+            t = tau >= 0 ? one(T) / (tau + sqrt(one(T) + tau * tau)) :
+                -one(T) / (-tau + sqrt(one(T) + tau * tau))
+            c = one(T) / sqrt(one(T) + t * t)
+            s = t * c
+            for k in 1:N
+                ikp = A[k, p]
+                ikq = A[k, q]
+                A[k, p] = c * ikp - s * conj(phase) * ikq
+                A[k, q] = s * phase * ikp + c * ikq
+            end
+            for k in 1:N
+                apk = A[p, k]
+                aqk = A[q, k]
+                A[p, k] = c * apk - s * phase * aqk
+                A[q, k] = s * conj(phase) * apk + c * aqk
+            end
+            A[p, q] = zero(Complex{T})
+            A[q, p] = zero(Complex{T})
+            for k in 1:N
+                ukp = U[k, p]
+                ukq = U[k, q]
+                U[k, p] = c * ukp - s * conj(phase) * ukq
+                U[k, q] = s * phase * ukp + c * ukq
+            end
         end
     end
-    E_hat = [U' * E[a] * U for a in 1:M]
-    Jac = zeros(T, M, M)
-    for b in 1:M
-        D_Eb = L .* E_hat[b]
-        for a in 1:M
-            Jac[a, b] = real(tr(E_hat[a]' * D_Eb))
-        end
-    end
-    return Jac
+    λ = [real(A[i, i]) for i in 1:N]
+    perm = sortperm(λ)
+    return λ[perm], U[:, perm]
+end
+
+struct _ComplexStepSecondDeriv{DF}
+    dφ::DF
+end
+
+function (cs::_ComplexStepSecondDeriv)(x::T) where {T <: Real}
+    h = eps(T)
+    return imag(cs.dφ(complex(x, h))) / h
 end
 
 @doc raw"""
     spectral_pushforward_bracket(φ, dφ, w::AbstractVector{T}; ħ::Real = one(T)) where {T}
+    spectral_pushforward_bracket(φ, dφ, d2φ, w::AbstractVector{T}; ħ::Real = one(T)) where {T}
 
 The ``N^2 \times N^2`` Poisson matrix `J` and derivative tensor `dJ` (with
 ``dJ[m, a, b] = \partial J_{ab} / \partial v_m``) in ``v``-coordinates of the pushforward
 of the ``\mathfrak{u}(N)^*`` Lie-Poisson bracket along the monotone spectral diffeomorphism
-``V = \varphi(W)``, evaluated at ``W = \sum_{a = 1}^{N^2} w_a E_a`` in the basis
-[`un_hermitian_basis`](@ref).
+``V = \varphi(W)``, evaluated analytically at ``W = \sum_{a = 1}^{N^2} w_a E_a`` in the
+basis [`un_hermitian_basis`](@ref) via first- and second-order Daleckii-Krein divided
+differences ``\mathcal{L}_\varphi(\lambda_j, \lambda_k)`` and
+``\mathcal{L}_\varphi^{[2]}(\lambda_i, \lambda_j, \lambda_\ell)``.
 
 For ``\varphi(\lambda) = \tfrac{1}{2}e^{2\lambda}`` (corresponding to the quadratic
 structure function ``c(w) = w^2``), ``V \succ 0`` is strictly positive-definite and the
 Fréchet derivative ``D\varphi(W)`` acts on eigenbasis entries by the logarithmic mean
 ``(v_j - v_k)/(\log v_j - \log v_k)``, yielding the Bogoliubov-Kubo-Mori logarithmic-mean
-Poisson bracket on ``\mathfrak{u}(N)^*`` which satisfies the Jacobi identity at every ``N``.
+Poisson bracket on ``\mathfrak{u}(N)^*`` which satisfies the Jacobi identity to machine
+precision in both `Float64` and `BigFloat`.
 """
 function spectral_pushforward_bracket(
         φ::F, dφ::DF, w::AbstractVector{T};
         ħ::Real = one(T)) where {F, DF, T <: Real}
+    return spectral_pushforward_bracket(φ, dφ, _ComplexStepSecondDeriv(dφ), w; ħ = ħ)
+end
+
+function spectral_pushforward_bracket(
+        φ::F, dφ::DF, d2φ::D2F, w::AbstractVector{T};
+        ħ::Real = one(T)) where {F, DF, D2F, T <: Real}
     M = length(w)
     N = isqrt(M)
     N * N == M || throw(DimensionMismatch("length(w) = $M must be a perfect square N^2"))
     E = un_hermitian_basis(N, T)
     C = un_structure_constants(N, T; ħ = ħ)
 
-    Jac = _spectral_frechet_matrix(φ, dφ, w, E)
-    Jac_inv = inv(Jac)
+    W = zeros(Complex{T}, N, N)
+    for a in 1:M
+        W .+= w[a] .* E[a]
+    end
+    λ, U = _hermitian_eigen(W)
+    tol = sqrt(eps(T))
+    L1 = Matrix{T}(undef, N, N)
+    for k in 1:N, j in 1:N
+
+        if abs(λ[j] - λ[k]) < tol
+            L1[j, k] = dφ((λ[j] + λ[k]) / 2)
+        else
+            L1[j, k] = (φ(λ[j]) - φ(λ[k])) / (λ[j] - λ[k])
+        end
+    end
+    L2 = Array{T, 3}(undef, N, N, N)
+    for l in 1:N, j in 1:N, i in 1:N
+        if abs(λ[i] - λ[j]) < tol && abs(λ[j] - λ[l]) < tol
+            L2[i, j, l] = d2φ((λ[i] + λ[j] + λ[l]) / 3) / 2
+        elseif abs(λ[j] - λ[l]) < tol
+            λbar = (λ[j] + λ[l]) / 2
+            L2[i, j, l] = (L1[i, j] - dφ(λbar)) / (λ[i] - λbar)
+        else
+            L2[i, j, l] = (L1[i, j] - L1[i, l]) / (λ[j] - λ[l])
+        end
+    end
+
+    E_hat = [U' * E[a] * U for a in 1:M]
+    Jac = zeros(T, M, M)
+    for b in 1:M
+        D_Eb = L1 .* E_hat[b]
+        for a in 1:M
+            Jac[a, b] = real(tr(E_hat[a]' * D_Eb))
+        end
+    end
+
+    # Second Fréchet derivative dJac[k, a, b] = ∂Jac[a, b] / ∂w_k via L2 divided differences
+    dJac = zeros(T, M, M, M)
+    D2_bk = Matrix{Complex{T}}(undef, N, N)
+    for k in 1:M, b in k:M
+
+        Ek = E_hat[k]
+        Eb = E_hat[b]
+        for l in 1:N, i in 1:N
+
+            s = zero(Complex{T})
+            for j in 1:N
+                s += L2[i, j, l] * (Eb[i, j] * Ek[j, l] + Ek[i, j] * Eb[j, l])
+            end
+            D2_bk[i, l] = s
+        end
+        for a in 1:M
+            val = real(tr(E_hat[a]' * D2_bk))
+            dJac[k, a, b] = val
+            dJac[b, a, k] = val
+        end
+    end
+
     J_w = lie_poisson_matrix(C, w)
     J_v = Jac * J_w * Jac'
-
-    ε = T(1e-6)
     dJ_w = zeros(T, M, M, M)
-    e_k = zeros(T, M)
     for k in 1:M
-        fill!(e_k, zero(T))
-        e_k[k] = ε
-        wp = w + e_k
-        wm = w - e_k
-        Jac_p = _spectral_frechet_matrix(φ, dφ, wp, E)
-        Jac_m = _spectral_frechet_matrix(φ, dφ, wm, E)
-        Jp = Jac_p * lie_poisson_matrix(C, wp) * Jac_p'
-        Jm = Jac_m * lie_poisson_matrix(C, wm) * Jac_m'
-        dJ_w[k, :, :] .= (Jp .- Jm) ./ (2ε)
+        dJac_k = @view dJac[k, :, :]
+        Ck = @view C[k, :, :]
+        dJ_w[k, :, :] .= dJac_k * J_w * Jac' .+ Jac * Ck * Jac' .+ Jac * J_w * dJac_k'
     end
+    Jac_inv = inv(Jac)
     dJ_v = zeros(T, M, M, M)
     for m in 1:M, k in 1:M
 
-        dJ_v[m, :, :] .+= dJ_w[k, :, :] .* Jac_inv[k, m]
+        dJ_v[m, :, :] .+= Jac_inv[k, m] .* @view(dJ_w[k, :, :])
     end
     return J_v, dJ_v
 end

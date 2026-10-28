@@ -169,13 +169,24 @@ using Test
         inner = (K + 1 - 4):(K + 1 + 4)
         @test maximum(abs, comm_ab[inner, inner] - Tpb[inner, inner]) < 1e-13
 
-        # Logarithmic-mean spectral pushforward (φ(λ) = exp(2λ)/2) passes Jacobi at N = 3
+        # Logarithmic-mean spectral pushforward (φ(λ) = exp(2λ)/2) passes Jacobi to machine
+        # precision in both Float64 (~1e-16) and 256-bit BigFloat (~1e-77)
         rng = MersenneTwister(99)
         w3 = 0.3 .* randn(rng, 9)
         J_bkm, dJ_bkm = spectral_pushforward_bracket(
+            λ -> 0.5 * exp(2λ), λ -> exp(2λ), λ -> 2 * exp(2λ), w3)
+        @test maximum(abs, J_bkm + J_bkm') < 1e-14
+        @test jacobi_residual(J_bkm, dJ_bkm) < 1e-14
+        # 3-argument complex-step overload matches 4-argument analytical overload
+        J_bkm3, dJ_bkm3 = spectral_pushforward_bracket(
             λ -> 0.5 * exp(2λ), λ -> exp(2λ), w3)
-        @test maximum(abs, J_bkm + J_bkm') < 1e-13
-        @test jacobi_residual(J_bkm, dJ_bkm) < 1e-8
+        @test jacobi_residual(J_bkm3, dJ_bkm3) < 1e-14
+
+        w3_big = [BigFloat(2 * (-1)^k) / BigFloat(10 * (k + 1)) for k in 1:9]
+        J_big, dJ_big = spectral_pushforward_bracket(
+            λ -> exp(2λ) / 2, λ -> exp(2λ), λ -> 2 * exp(2λ), w3_big)
+        @test maximum(abs, J_big + J_big') < BigFloat(1e-70)
+        @test jacobi_residual(J_big, dJ_big) < BigFloat(1e-70)
     end
 
     @testset "$(rpad("semidirect-product Vlasov moment bracket: pointwise-flat vs direct",76))" begin
