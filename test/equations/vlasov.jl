@@ -205,6 +205,22 @@ using Test
             @test iszero(jacobi_residual(J_flat, dJ_flat))
         end
 
+        # Only the antisymmetric part of Kb enters: adding a symmetric part changes nothing
+        S = Rational{BigInt}[1 2 0 0; 2 0 0 0; 0 0 3 1; 0 0 1 -1] .// 3
+        @test vlasov_moment_flat_bracket(Ka_wall, ρ_q, m_q; Kb = Kb_mag + S) ==
+              vlasov_moment_flat_bracket(Ka_wall, ρ_q, m_q; Kb = Kb_mag)
+
+        # Integer input promotes to the type of m / ρ and agrees with the exact result
+        Ka_int = [-3 4 -1 0; -2 0 2 0; 0 -2 0 2; 0 1 -4 3]
+        ρ_int = [2, 3, 5, 4]
+        m_int = [1, -3, 2, 5]
+        J_i, dJ_i = vlasov_moment_flat_bracket(Ka_int, ρ_int, m_int)
+        J_q, dJ_q = vlasov_moment_flat_bracket(
+            Rational{BigInt}.(Ka_int), Rational{BigInt}.(ρ_int), Rational{BigInt}.(m_int))
+        @test eltype(J_i) == Float64
+        @test J_i ≈ Float64.(J_q)
+        @test dJ_i ≈ Float64.(dJ_q)
+
         # Direct collocation fails Jacobi at O(1)
         J_dir, dJ_dir = vlasov_moment_direct_bracket(Ka_per, ρ_q, m_q)
         @test J_dir == -transpose(J_dir)

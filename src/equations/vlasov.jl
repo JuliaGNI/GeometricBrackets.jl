@@ -70,19 +70,23 @@ function vlasov_weighted_poisson_matrix(space::TensorSplineSpace{T, 2}, f) where
     vlasov_weighted_poisson_matrix(space, map(f, quadrature_nodes(space)))
 end
 
-function vlasov_weighted_poisson_matrix(
-        space::TensorSplineSpace{T, 2}, f::AbstractVector) where {T}
+# The antisymmetric form W[p, q] = ∫ f {Φ_p, Φ_q}_(x, v) dx dv, with `f` sampled at the
+# quadrature nodes of `space`.
+function _vlasov_weighted_form(space::TensorSplineSpace{T, 2}, f::AbstractVector) where {T}
     w = quadrature_weights(space)
     length(f) == length(w) || throw(DimensionMismatch(
         "the distribution was sampled at $(length(f)) points but the quadrature grid has " *
         "$(length(w))"))
     Φ10 = Matrix(basis_values(space, (1, 0)))
     Φ01 = Matrix(basis_values(space, (0, 1)))
+    A = Φ10 * Diagonal(f .* w) * Φ01'
+    return A - A'
+end
+
+function vlasov_weighted_poisson_matrix(
+        space::TensorSplineSpace{T, 2}, f::AbstractVector) where {T}
     Minv = inverse_mass_matrix(space)
-    fw = f .* w
-    W = Φ10 * Diagonal(fw) * Φ01' - Φ01 * Diagonal(fw) * Φ10'
-    J = Minv * W * Minv'
-    return (J - J') / 2
+    return _skew(Minv * _vlasov_weighted_form(space, f) * Minv')
 end
 
 @doc raw"""
@@ -157,23 +161,12 @@ end
 function parity_vlasov_blocks(space::TensorSplineSpace{T, 2}, f0::AbstractVector;
         orthonormal::Bool = false) where {T}
     U_plus, U_minus = velocity_parity_projectors(space; orthonormal = orthonormal)
-    if orthonormal
-        w = quadrature_weights(space)
-        length(f0) == length(w) || throw(DimensionMismatch(
-            "the distribution was sampled at $(length(f0)) points but the quadrature grid has " *
-            "$(length(w))"))
-        Φ10 = Matrix(basis_values(space, (1, 0)))
-        Φ01 = Matrix(basis_values(space, (0, 1)))
-        fw = f0 .* w
-        J = Φ10 * Diagonal(fw) * Φ01' - Φ01 * Diagonal(fw) * Φ10'
-        J = (J - J') / 2
-    else
-        J = vlasov_weighted_poisson_matrix(space, f0)
-    end
-    J_pp = (U_plus' * J * U_plus - (U_plus' * J * U_plus)') / 2
+    J = orthonormal ? _vlasov_weighted_form(space, f0) :
+        vlasov_weighted_poisson_matrix(space, f0)
+    J_pp = _skew(U_plus' * J * U_plus)
     J_pm = U_plus' * J * U_minus
     J_mp = -J_pm'
-    J_mm = (U_minus' * J * U_minus - (U_minus' * J * U_minus)') / 2
+    J_mm = _skew(U_minus' * J * U_minus)
     return J_pp, J_pm, J_mp, J_mm
 end
 
@@ -547,10 +540,13 @@ differences ``\mathcal{L}_\varphi(\lambda_j, \lambda_k)`` and
 
 For ``\varphi(\lambda) = \tfrac{1}{2}e^{2\lambda}`` (corresponding to the quadratic
 structure function ``c(w) = w^2``), ``V \succ 0`` is strictly positive-definite and the
-Fréchet derivative ``D\varphi(W)`` acts on eigenbasis entries by the logarithmic mean
-``(v_j - v_k)/(\log v_j - \log v_k)``, yielding the Bogoliubov-Kubo-Mori logarithmic-mean
+Fréchet derivative ``D\varphi(W)`` acts on eigenbasis entries by twice the logarithmic mean,
+``2(v_j - v_k)/(\log v_j - \log v_k)``, yielding the Bogoliubov-Kubo-Mori logarithmic-mean
 Poisson bracket on ``\mathfrak{u}(N)^*`` which satisfies the Jacobi identity to machine
 precision in both `Float64` and `BigFloat`.
+
+The method without `d2φ` takes ``\varphi''`` from a complex step on `dφ`, so there `dφ`
+must accept a complex argument.
 """
 function spectral_pushforward_bracket(
         φ::F, dφ::DF, w::AbstractVector{T};
@@ -675,6 +671,8 @@ from the flat velocity chart ``(\rho_i, u_i = m_i / \rho_i)`` via
 
 Satisfies the Jacobi identity identically for **every** matrix ``\mathbb{K}_a`` and every
 antisymmetric matrix ``\mathbb{K}_b = -\mathbb{K}_b^T`` on both periodic and bounded domains.
+`Kb` enters through its antisymmetric part ``\tfrac{1}{2}(\mathbb{K}_b - \mathbb{K}_b^T)``,
+so `J` is antisymmetric for any `Kb`.
 """
 function vlasov_moment_flat_bracket(
         Ka::AbstractMatrix, ρ::AbstractVector, m::AbstractVector;
@@ -684,7 +682,8 @@ function vlasov_moment_flat_bracket(
     (size(Ka) == (N, N) && size(Kb) == (N, N) && length(m) == N) ||
         throw(DimensionMismatch(
             "expected N×N matrices and length-N vectors, got size(Ka)=$(size(Ka)), size(Kb)=$(size(Kb)), length(ρ)=$N, length(m)=$(length(m))"))
-    T = promote_type(eltype(Ka), eltype(Kb), eltype(ρ), eltype(m))
+    Kb = _skew(Kb)
+    T = promote_type(eltype(Ka), eltype(Kb), typeof(one(eltype(m)) / one(eltype(ρ))))
     u = Vector{T}(undef, N)
     for i in 1:N
         u[i] = m[i] / ρ[i]
