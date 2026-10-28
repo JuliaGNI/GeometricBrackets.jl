@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `src/equations/vlasov.jl` — finite-dimensional Poisson bracket constructors and
+  direct-projection controls for the two-dimensional Vlasov equation:
+  - `vlasov_galerkin_tensor` and `vlasov_weighted_poisson_matrix` assemble the direct
+    Galerkin Lie-Poisson tensor ``C[m, i, j] = c_{ij}^m`` and the frozen bracket matrix
+    ``\mathbb{J}(f)`` on a `TensorSplineSpace{T, 2}`.
+  - `velocity_parity_projectors`, `parity_vlasov_blocks`, `parity_vlasov_bracket` and
+    `dlra_parity_vlasov_bracket` build the time-reversal parity decomposition
+    ``f = f_0 + \delta f^+ + \delta f^-`` (Euclidean or ``\mathbb{M}``-orthonormal B-spline
+    Stiefel frame) and its constant block-off-diagonal `ConstantBracket` on full spline and
+    ``O(r) \times O(r)`` gauge-invariant dynamic-low-rank spaces.
+  - `canonical_vlasov_bracket`, `clebsch_vlasov_tensor`, `clebsch_vlasov_map` and
+    `clebsch_pushforward_matrix` implement the discrete canonical Clebsch representation
+    ``f_h = f_{0, h} + \Pi_h\{\alpha_h, \beta_h\}_{(x, v)}`` on ``(\mathbb{R}^{2N},
+    \mathbb{J}_{2N})`` together with its pushforward bivector ``\Pi_{mn}(Q, P) =
+    -Q^T [B_m, B_n] P`` on the Eulerian coefficients.
+  - `un_hermitian_basis`, `un_structure_constants`, `weyl_vlasov_matrix` and
+    `spectral_pushforward_bracket` implement the finite-mode von Neumann-Poisson bracket on
+    ``\mathfrak{u}(N)^*`` in a real trace-orthonormal Hermitian basis, compressed Weyl
+    quantisation of polynomial-in-momentum Vlasov symbols on ``S^1 \times \mathbb{R}``, and
+    the positive-definite Bogoliubov-Kubo-Mori logarithmic-mean spectral pushforward.
+  - `vlasov_moment_flat_bracket` and `vlasov_moment_direct_bracket` assemble the
+    pointwise-flat semidirect-product Vlasov velocity-moment / waterbag bracket
+    ``\mathbb{J}(\rho, m) = D\Phi_N \mathbb{K}_2 D\Phi_N^T`` and its direct-collocation
+    control.
+- `test/equations/vlasov.jl`, `docs/src/vlasov.md` and `scripts/verify_vlasov_brackets.jl`
+  (registered in `scripts/run_all.jl` and `docs/src/scripts.md`).
+
 ## [0.3.1] — 2026-10-24
 
 The Julia floor rises from 1.11 to 1.12, so this version cannot be installed on Julia 1.11.

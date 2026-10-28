@@ -110,6 +110,7 @@ each, here.
 | `verify_zeitlin_three_bracket.jl` | the Bialynicki-Birula--Morrison three-bracket ``[A,B,I_2]`` reproduces the Zeitlin bracket on ``\mathfrak{su}(N)``, the truncation supplying the non-degenerate Killing form the continuum lacks; with ``\mathfrak{se}(3)`` and the cubic Casimir as the controls that fail | [Discrete Lie-Poisson brackets](@ref) |
 | `verify_gardner_4bracket.jl` | the Gardner-like ansatz is decomposable, hence rank ``\le 2``; Jacobi ``\iff`` Frobenius involutivity | [Four-brackets](@ref) |
 | `verify_dirac_reduction.jl` | the Jacobiator transports tensorially through the Dirac projector, so reduction preserves the Jacobi identity and never creates it; the four realisations; what survives | [Dirac reduction](@ref) |
+| `verify_vlasov_brackets.jl` | direct Eulerian Vlasov projections fail the Jacobi identity at ``O(1)``; four non-particle routes satisfy it identically — time-reversal parity splitting around a ``v``-even equilibrium, canonical Clebsch potentials (with the discrete Clebsch non-submersion theorem), finite-mode ``\mathfrak{u}(N)^*`` Weyl quantisation and its logarithmic-mean spectral pushforward, and pointwise-flat semidirect-product moment brackets | [Vlasov](@ref), [Discrete Lie-Poisson brackets](@ref) |
 | `search_dirac_variants.jl` | an exhaustive search for a variant that *does* create it — B1a–B4. **Exploratory and slow; excluded from `run_all.jl`** | [The search for a repair](@ref) |
 
 ## The four-bracket manuscript

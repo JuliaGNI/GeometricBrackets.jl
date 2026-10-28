@@ -4,9 +4,9 @@ CurrentModule = GeometricBrackets
 
 # Library
 
-The docstrings that belong to a topic live with it and are not repeated here: the three
-equation modules on their own pages — [Korteweg-de Vries](@ref), [Camassa-Holm](@ref) and
-[Burgers](@ref) — the Lie algebras and the exact linear algebra under
+The docstrings that belong to a topic live with it and are not repeated here: the four
+equation modules on their own pages — [Korteweg-de Vries](@ref), [Camassa-Holm](@ref),
+[Burgers](@ref) and [Vlasov](@ref) — the Lie algebras and the exact linear algebra under
 [Discrete Lie-Poisson brackets](@ref), the reduction and the broken hierarchical space under
 [Dirac reduction](@ref), and the measurement layer under [Diagnostics](@ref).
 

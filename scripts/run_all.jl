@@ -55,7 +55,8 @@ const SCRIPTS = [
     # carries a bracket across the pole the tensor-product spaces cannot reach
     "verify_pullback.jl",
     "verify_polar_bracket.jl",
-    "verify_frame_covariance.jl"
+    "verify_frame_covariance.jl",
+    "verify_vlasov_brackets.jl"
 ]
 
 const RULE = "="^67
