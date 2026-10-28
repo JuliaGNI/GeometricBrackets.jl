@@ -254,6 +254,14 @@ using Test
         @test_throws ArgumentError un_hermitian_basis(0)
         @test_throws ArgumentError weyl_vlasov_matrix(Dict((0, 0) => 1.0), -1, 1.0)
         @test_throws DimensionMismatch spectral_pushforward_bracket(identity, one, ones(5))
+        # The Jacobi eigensolver rejects a non-finite matrix, which BigFloat's `max` would skip
+        # silently, and raises where the sweeps end before it has converged
+        W_nan = Complex{BigFloat}[1 BigFloat(NaN); BigFloat(NaN) 2]
+        @test_throws DomainError GeometricBrackets._hermitian_eigen(W_nan)
+        W_dense = Complex{BigFloat}.(Hermitian(randn(MersenneTwister(5), 5, 5)))
+        @test_throws ErrorException GeometricBrackets._hermitian_eigen(W_dense; maxsweeps = 1)
+        λ, U = GeometricBrackets._hermitian_eigen(W_dense)
+        @test W_dense * U ≈ U * Diagonal(λ)
         @test_throws DimensionMismatch clebsch_vlasov_map(zeros(3, 3, 3), ones(2), ones(3))
         @test_throws DimensionMismatch clebsch_pushforward_matrix(
             zeros(3, 3, 3), ones(3), ones(2))

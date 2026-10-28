@@ -463,7 +463,9 @@ function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: LinearAlgeb
     return eig.values, eig.vectors
 end
 
-function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: Real}
+function _hermitian_eigen(
+        W::AbstractMatrix{Complex{T}}; maxsweeps::Integer = 60) where {T <: Real}
+    all(isfinite, W) || throw(DomainError(W, "the matrix has a non-finite entry"))
     N = size(W, 1)
     A = Matrix{Complex{T}}(W)
     for j in 1:N, i in 1:N
@@ -472,13 +474,19 @@ function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: Real}
     end
     U = Matrix{Complex{T}}(I, N, N)
     tol = eps(T) * T(10)
-    for _ in 1:60
+    off = zero(T)
+    converged = false
+    for sweep in 0:maxsweeps
         off = zero(T)
         for q in 2:N, p in 1:(q - 1)
 
             off = max(off, abs(A[p, q]))
         end
-        off <= tol && break
+        if off <= tol
+            converged = true
+            break
+        end
+        sweep == maxsweeps && break
         for q in 2:N, p in 1:(q - 1)
 
             apq = A[p, q]
@@ -512,6 +520,9 @@ function _hermitian_eigen(W::AbstractMatrix{Complex{T}}) where {T <: Real}
             end
         end
     end
+    converged || error(
+        "Jacobi eigensolver did not converge in $maxsweeps sweeps: " *
+        "largest off-diagonal entry $off exceeds the tolerance $tol")
     λ = [real(A[i, i]) for i in 1:N]
     perm = sortperm(λ)
     return λ[perm], U[:, perm]

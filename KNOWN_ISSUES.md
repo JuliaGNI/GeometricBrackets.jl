@@ -60,3 +60,14 @@
   reflection or an `ArgumentError`, is not decided.
 - **kind:** defect
 - **found:** #43
+
+### K10 · `_hermitian_eigen` is a local Jacobi eigensolver for the non-BLAS element types, and `GeometricSolvers` is to provide that function.
+
+- **location:** `src/equations/vlasov.jl`
+- **evidence:** `_hermitian_eigen(W::AbstractMatrix{Complex{T}})` for `T <: Real` outside `BlasReal`
+  is a hand-written cyclic Jacobi method. `GeometricSolvers` plans a Hermitian `jacobi_eigen`,
+  which is not released. The local copy stays until that release, and then goes. It raises a
+  `DomainError` for a non-finite entry and an error after `maxsweeps` sweeps without
+  convergence.
+- **kind:** upstream
+- **found:** #43
