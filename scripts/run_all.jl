@@ -8,7 +8,7 @@
 # sections of `discrete-kdv-brackets-notes.tex`, the Burgers and Lie-Poisson ones those of
 # `discrete-lie-poisson-brackets.tex` and its Dirac companion, the four-bracket ones those of
 # `poisson-brackets-from-four-brackets.tex`.  Naming each script after the bracket it diagnoses
-# is what keeps the three manuscripts apart in one flat directory.
+# is what keeps the manuscripts apart in one flat directory.
 #
 # Each script runs in its own process, so a failure -- or an `exit(1)` from `summary` -- is
 # contained and reported rather than taking the runner down with it.  The symbolic scripts

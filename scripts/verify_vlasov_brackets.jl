@@ -138,24 +138,39 @@ for (label, bc_v) in (("Free()", Free()), ("Dirichlet()", Dirichlet())),
 
     f0_even = xv -> (1.0 + 0.3 * cos(xv[1])) * exp(-0.5 * (xv[2] - π)^2)
     J_pp, J_pm, J_mp, J_mm = parity_vlasov_blocks(s, f0_even; orthonormal = orth)
-    iso_err = max(maximum(abs, J_pp), maximum(abs, J_mm), maximum(abs, J_mp + J_pm'))
+    iso_err = max(maximum(abs, J_pp), maximum(abs, J_mm))
+
+    # Dense reference: the weighted Poisson matrix of the public constructor, projected onto
+    # the parity frames (the orthonormal blocks use the raw form M J M')
+    Ms = Matrix(mass_matrix(s))
+    reference(f0) = (J = vlasov_weighted_poisson_matrix(s, f0); orth ? Ms * J * Ms' : J)
+    F = [U_plus U_minus]
+    np = size(U_plus, 2)
+    J_proj = F' * reference(f0_even) * F
+    block_err = max(norm(J_pm - J_proj[1:np, (np + 1):end]),
+        norm(J_mp - J_proj[(np + 1):end, 1:np]))
 
     f0_skew = xv -> (1.0 + 0.3 * cos(xv[1])) * exp(-0.5 * (xv[2] - π - 0.7)^2)
-    J_pp_skew, _, _, J_mm_skew = parity_vlasov_blocks(s, f0_skew; orthonormal = orth)
+    J_pp_skew, J_pm_skew, J_mp_skew, J_mm_skew = parity_vlasov_blocks(
+        s, f0_skew; orthonormal = orth)
     skew_mag = max(maximum(abs, J_pp_skew), maximum(abs, J_mm_skew))
+    J_proj_skew = F' * reference(f0_skew) * F
+    skew_err = max(norm(J_pp_skew - J_proj_skew[1:np, 1:np]),
+        norm(J_pm_skew - J_proj_skew[1:np, (np + 1):end]),
+        norm(J_mp_skew - J_proj_skew[(np + 1):end, 1:np]),
+        norm(J_mm_skew - J_proj_skew[(np + 1):end, (np + 1):end]))
 
     b_par = parity_vlasov_bracket(s, f0_even; orthonormal = orth)
-    z0 = ones(nbasis(s))
-    jac_par = jacobi_residual(b_par, z0)
+    par_err = norm(Matrix(b_par.P) - J_proj)
 
     tag = @sprintf("bc=%s, orth=%s", label, orth)
     check("Parity projectors ($tag): orthonormal and isotropic on v-even f0",
-        orth_err < 1e-13 && iso_err < 1e-13 && iszero(jac_par),
-        @sprintf("orth = %.2e, max(|J++|,|J--|) = %.2e, jac = %.1e",
-            orth_err, iso_err, jac_par))
+        orth_err < 1e-13 && iso_err < 1e-13 && block_err < 1e-12 && par_err < 1e-12,
+        @sprintf("orth = %.2e, max(|J++|,|J--|) = %.2e, block = %.2e, bracket = %.2e",
+            orth_err, iso_err, block_err, par_err))
     check("Parity blocks ($tag): v-skew f0 breaks isotropy (control)",
-        skew_mag > 1e-2,
-        @sprintf("max(|J++_skew|,|J--_skew|) = %.3e", skew_mag))
+        skew_mag > 1e-2 && skew_err < 1e-12,
+        @sprintf("max(|J++_skew|,|J--_skew|) = %.3e, block = %.2e", skew_mag, skew_err))
 end
 
 # O(r) × O(r) DLRA parity bracket and nonlinear symplectic shear + PSDLayer pullback
@@ -170,11 +185,15 @@ let s = TensorSplineSpace((4, 6), 2, (Periodic(), Free()))
     Uv_p = Matrix(qr(randn(MersenneTwister(2), m_plus, r)).Q)
     Uv_m = Matrix(qr(randn(MersenneTwister(3), m_minus, r)).Q)
     b_dlra = dlra_parity_vlasov_bracket(A_full, Ux, Uv_p, Uv_m)
-    z_dlra = randn(MersenneTwister(4), 2 * r^2)
-    check("O(r)×O(r) DLRA parity Vlasov bracket: antisymmetric and exact Jacobi",
-        isantisymmetric(b_dlra, z_dlra) && iszero(jacobi_residual(b_dlra, z_dlra)),
-        @sprintf("size = %d×%d, jac_res = %.1e",
-            size(b_dlra.P, 1), size(b_dlra.P, 2), jacobi_residual(b_dlra, z_dlra)))
+    # The DLRA bracket is the parity bracket pulled back along the Stiefel embedding
+    P_plus = kron(Uv_p, Ux)
+    P_minus = kron(Uv_m, Ux)
+    E = [P_plus zeros(size(P_plus, 1), r^2); zeros(size(P_minus, 1), r^2) P_minus]
+    dlra_err = norm(Matrix(b_dlra.P) - E' * Matrix(parity_vlasov_bracket(A_full).P) * E)
+    check("O(r)×O(r) DLRA parity Vlasov bracket: pullback of the parity bracket",
+        size(b_dlra.P) == (2 * r^2, 2 * r^2) && dlra_err < 1e-13,
+        @sprintf("size = %d×%d, ||P_dlra - Eᵀ P_par E|| = %.2e",
+            size(b_dlra.P, 1), size(b_dlra.P, 2), dlra_err))
 
     # Nonlinear Darboux dressing: compose a symplectic Stiefel embedding A ∈ Sp(2n, 2N)
     # with an upper/lower symplectic gradient shear and an affine reference shift z_ref
@@ -185,17 +204,28 @@ let s = TensorSplineSpace((4, 6), 2, (Periodic(), Free()))
     U_orth = Matrix(qr(randn(MersenneTwister(5), N_lat, n_lat)).Q)
     A_sp = [U_orth zeros(N_lat, n_lat); zeros(N_lat, n_lat) U_orth]
     K_sym = Symmetric(randn(MersenneTwister(6), N_lat, N_lat))
-    # Symplectic shear ψ(Q, P) = (Q, P + K_sym * tanh.(Q)) has Jacobian [I 0; D_shear I] ∈ Sp(2N)
+    # Symplectic shear ψ(Q, P) = (Q, P + K_sym * tanh.(K_sym * Q)), the P-shift being the gradient
+    # of Σ log cosh((K_sym Q)_i), has Jacobian [I 0; D_shear I] ∈ Sp(2N) with the symmetric
+    # D_shear = K_sym * Diagonal(sech.(K_sym * Q) .^ 2) * K_sym
+    decoder(ξ) = (z = A_sp * ξ; Q = z[1:N_lat];
+        vcat(Q, z[(N_lat + 1):end] .+ K_sym * tanh.(K_sym * Q)))
     ξ = randn(MersenneTwister(7), 2 * n_lat)
-    z_lin = A_sp * ξ
-    Q_lin = z_lin[1:N_lat]
-    D_shear = K_sym * Diagonal(sech.(Q_lin) .^ 2) * K_sym
+    Q_lin = (A_sp * ξ)[1:N_lat]
+    D_shear = K_sym * Diagonal(sech.(K_sym * Q_lin) .^ 2) * K_sym
     D_psi = [Matrix{Float64}(I, N_lat, N_lat) zeros(N_lat, N_lat);
              D_shear Matrix{Float64}(I, N_lat, N_lat)]
     D_dec = D_psi * A_sp
+    # the analytic Jacobian against central differences of the decoder itself
+    h = 1e-6
+    D_fd = reduce(hcat,
+        [(decoder(ξ + h * e) - decoder(ξ - h * e)) / 2h
+         for e in eachcol(Matrix{Float64}(I, 2 * n_lat, 2 * n_lat))])
+    jac_err = norm(D_dec - D_fd)
     symp_err = norm(D_dec' * J2N * D_dec - J2n)
     check("Nonlinear symplectic shear + PSDLayer decoder: exact canonical pullback J_{2n}",
-        symp_err < 1e-14, @sprintf("||DΨ^T J_{2N} DΨ - J_{2n}|| = %.2e", symp_err))
+        jac_err < 1e-8 && symp_err < 1e-14,
+        @sprintf("||DΨ - DΨ_fd|| = %.2e, ||DΨ^T J_{2N} DΨ - J_{2n}|| = %.2e",
+            jac_err, symp_err))
 end
 
 # =============================================================================
@@ -215,12 +245,14 @@ let s = TensorSplineSpace((3, 3), 2, (Periodic(), Periodic()))
     c = clebsch_vlasov_map(B, Q, P, c0)
     b_int = basis_integrals(s)
     mass_err = abs(dot(b_int, c) - dot(b_int, c0))
+    J_can = [zeros(N, N) Matrix{Float64}(I, N, N); -Matrix{Float64}(I, N, N) zeros(N, N)]
+    can_err = norm(Matrix(b_can.P) - J_can)
 
     check(
-        "Canonical Clebsch phase space (R^{2N}, J_{2N}): exact Jacobi and mass conservation",
-        isantisymmetric(b_can, z) && iszero(jacobi_residual(b_can, z)) && mass_err < 1e-13,
-        @sprintf("jac_res = %.1e, |∫f_h - ∫f_{0,h}| = %.2e",
-            jacobi_residual(b_can, z), mass_err))
+        "Canonical Clebsch phase space (R^{2N}, J_{2N}): canonical matrix and mass conservation",
+        can_err == 0 && mass_err < 1e-13,
+        @sprintf("||J_{2N} - [0 I; -I 0]|| = %.1e, |∫f_h - ∫f_{0,h}| = %.2e",
+            can_err, mass_err))
 
     Π = clebsch_pushforward_matrix(B, Q, P)
     Π_comm = [-dot(Q, (B[m, :, :] * B[n, :, :] - B[n, :, :] * B[m, :, :]) * P)

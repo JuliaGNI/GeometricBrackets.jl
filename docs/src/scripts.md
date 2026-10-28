@@ -4,14 +4,14 @@ CurrentModule = GeometricBrackets
 
 # The verification scripts
 
-`scripts/` holds twenty-eight `verify_*.jl` scripts that machine-verify the claims of the three
-manuscripts, two that draw their figures, one exploratory search, a driver and four shared
-helper modules — thirty-six files, plus the seven in `fable/`. Eighteen of the verification
-scripts are converted Python prototypes that used to live in the manuscripts' `Scripts/`
-directories; [Verification](@ref) records the agreement claim by claim and the errata the
-comparison turned up. The four `verify_fourbracket_*` scripts, the five of the metric-bracket
-half and `verify_vlasov_brackets.jl` had no Python ancestor — they arrived as standalone Julia,
-or alongside the Julia implementation itself.
+`scripts/` holds the `verify_*.jl` scripts that machine-verify the claims of the manuscripts,
+the scripts that draw their figures, one exploratory search, a driver and the shared helper
+modules, plus the scripts in `fable/`. Many of the verification scripts are converted Python
+prototypes that used to live in the manuscripts' `Scripts/` directories; [Verification](@ref)
+records the agreement claim by claim and the errata the comparison turned up. The
+`verify_fourbracket_*` scripts, those of the metric-bracket half and `verify_vlasov_brackets.jl`
+had no Python ancestor — they arrived as standalone Julia, or alongside the Julia
+implementation itself.
 
 This page is an **index**: what each script checks, and where the theory behind it is written
 down. Each script's own header carries the authoritative section-by-section detail, which is
@@ -20,9 +20,9 @@ why the entries here are one line long.
 ## Running them
 
 ```sh
-julia --project=scripts scripts/run_all.jl          # all twenty-eight; nonzero exit on failure
+julia --project=scripts scripts/run_all.jl          # all of them; nonzero exit on failure
 julia --project=scripts scripts/verify_kdv_bea.jl   # or just one
-sh scripts/run_fable.sh                             # the seven fable scripts, about 13 minutes
+sh scripts/run_fable.sh                             # the fable scripts, slow
                                                     # (longer the first time: one of them needs SymPy)
 ```
 

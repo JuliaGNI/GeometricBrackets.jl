@@ -48,3 +48,15 @@
   argument for the constructor or a check of `f`; neither is decided.
 - **kind:** defect
 - **found:** #37
+
+### K9 · `velocity_parity_projectors` reflects the velocity index `j → nv + 1 - j`, which is not the velocity reflection on a `Periodic()` axis, and nothing rejects the axis.
+
+- **location:** `src/equations/vlasov.jl`
+- **evidence:** With a v-even `f0` on `TensorSplineSpace((4, 5), 2, (Periodic(), Periodic()))`,
+  `parity_vlasov_blocks(s, f0)` gives `maximum(abs, J_pp)` of 0.744 and `maximum(abs, J_mm)` of
+  0.656 for `orthonormal = false`, and 0.241 and 0.180 for `orthonormal = true`. The blocks
+  vanish to machine precision on `Free()` and `Dirichlet()`. Whether the index reversal is the
+  intended parity on a periodic velocity axis, or whether the function needs the periodic
+  reflection or an `ArgumentError`, is not decided.
+- **kind:** defect
+- **found:** #43

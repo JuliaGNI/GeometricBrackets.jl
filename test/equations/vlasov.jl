@@ -45,28 +45,43 @@ using Test
                 @test maximum(abs, U_plus' * U_minus) < 1e-14
             end
 
+            # Dense reference: the weighted Poisson matrix of the public constructor, projected
+            # onto the frames. The orthonormal blocks use the raw form M J M' (J = M⁻¹ W M⁻ᵀ).
+            M = Matrix(mass_matrix(s))
+            reference(f0) = (
+                J = vlasov_weighted_poisson_matrix(s, f0); orth ? M * J * M' : J)
+            F = [U_plus U_minus]
+            np = size(U_plus, 2)
+
             # Velocity-even background f0(x, 2π - v) == f0(x, v): diagonal blocks vanish
             f0_even = xv -> (1.0 + 0.25 * cos(xv[1])) * exp(-0.5 * (xv[2] - π)^2)
             J_pp, J_pm, J_mp, J_mm = parity_vlasov_blocks(
                 s, f0_even; orthonormal = orth)
             @test maximum(abs, J_pp) < 1e-13
             @test maximum(abs, J_mm) < 1e-13
-            @test J_mp ≈ -J_pm'
             @test norm(J_pm) > 0.1
+            J_proj = F' * reference(f0_even) * F
+            @test J_pm ≈ J_proj[1:np, (np + 1):end] atol = 1e-12
+            @test J_mp ≈ J_proj[(np + 1):end, 1:np] atol = 1e-12
 
             # Negative control: drifted (velocity-skew) background breaks isotropy
             f0_skew = xv -> (1.0 + 0.25 * cos(xv[1])) * exp(-0.5 * (xv[2] - π - 0.7)^2)
-            J_pp_skew, _, _, J_mm_skew = parity_vlasov_blocks(
+            J_pp_skew, J_pm_skew, J_mp_skew, J_mm_skew = parity_vlasov_blocks(
                 s, f0_skew; orthonormal = orth)
             @test maximum(abs, J_pp_skew) > 1e-2
             @test maximum(abs, J_mm_skew) > 1e-2
+            J_proj_skew = F' * reference(f0_skew) * F
+            @test J_pp_skew ≈ J_proj_skew[1:np, 1:np] atol = 1e-12
+            @test J_pm_skew ≈ J_proj_skew[1:np, (np + 1):end] atol = 1e-12
+            @test J_mp_skew ≈ J_proj_skew[(np + 1):end, 1:np] atol = 1e-12
+            @test J_mm_skew ≈ J_proj_skew[(np + 1):end, (np + 1):end] atol = 1e-12
 
-            # Parity Vlasov bracket and DLRA parity Vlasov bracket are ConstantBrackets
+            # The parity bracket is the full bracket in the parity frame: constant, with the
+            # v-even and v-odd blocks isotropic
             b_par = parity_vlasov_bracket(s, f0_even; orthonormal = orth)
-            z = ones(N)
-            @test isantisymmetric(b_par, z)
-            @test iszero(jacobi_residual(b_par, z))
+            @test Matrix(b_par.P) ≈ J_proj atol = 1e-12
 
+            # The DLRA bracket is the parity bracket pulled back along the Stiefel embedding
             nx, nv = size(s)
             m_minus = div(nv, 2)
             m_plus = nv - m_minus
@@ -75,9 +90,11 @@ using Test
             Uv_p = Matrix(qr(randn(MersenneTwister(2), m_plus, r)).Q)
             Uv_m = Matrix(qr(randn(MersenneTwister(3), m_minus, r)).Q)
             b_dlra = dlra_parity_vlasov_bracket(J_pm, Ux, Uv_p, Uv_m)
-            z_dlra = ones(2 * r^2)
-            @test isantisymmetric(b_dlra, z_dlra)
-            @test iszero(jacobi_residual(b_dlra, z_dlra))
+            P_plus = kron(Uv_p, Ux)
+            P_minus = kron(Uv_m, Ux)
+            E = [P_plus zeros(size(P_plus, 1), r^2); zeros(size(P_minus, 1), r^2) P_minus]
+            @test size(b_dlra.P) == (2 * r^2, 2 * r^2)
+            @test Matrix(b_dlra.P) ≈ E' * Matrix(b_par.P) * E atol = 1e-12
         end
     end
 
@@ -92,9 +109,8 @@ using Test
         rng = MersenneTwister(7)
         Q = randn(rng, N)
         P = randn(rng, N)
-        z = vcat(Q, P)
-        @test isantisymmetric(b_can, z)
-        @test iszero(jacobi_residual(b_can, z))
+        Z = zeros(N, N)
+        @test Matrix(b_can.P) == [Z Matrix{Float64}(I, N, N); -Matrix{Float64}(I, N, N) Z]
 
         c0 = ones(N)
         c = clebsch_vlasov_map(B, Q, P, c0)
@@ -180,6 +196,8 @@ using Test
         # 3-argument complex-step overload matches 4-argument analytical overload
         J_bkm3, dJ_bkm3 = spectral_pushforward_bracket(
             λ -> 0.5 * exp(2λ), λ -> exp(2λ), w3)
+        @test J_bkm3 ≈ J_bkm
+        @test dJ_bkm3 ≈ dJ_bkm rtol = 1e-6
         @test jacobi_residual(J_bkm3, dJ_bkm3) < 1e-14
 
         w3_big = [BigFloat(2 * (-1)^k) / BigFloat(10 * (k + 1)) for k in 1:9]
