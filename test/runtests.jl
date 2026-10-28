@@ -26,6 +26,7 @@ if "core" in GROUPS
     @safetestset "Miura" include("integration/miura.jl")
     @safetestset "Burgers" include("equations/burgers.jl")
     @safetestset "Camassa-Holm" include("equations/camassaholm.jl")
+    @safetestset "Vlasov" include("equations/vlasov.jl")
     @safetestset "Diagnostics" include("diagnostics.jl")
 end
 if "slow" in GROUPS

@@ -159,6 +159,17 @@ export CamassaHolmSystem, camassa_holm_bracket_1, camassa_holm_bracket_2,
 
 include("equations/camassaholm.jl")
 
+export vlasov_galerkin_tensor, vlasov_weighted_poisson_matrix,
+       velocity_parity_projectors, parity_vlasov_blocks,
+       parity_vlasov_bracket, dlra_parity_vlasov_bracket,
+       canonical_vlasov_bracket, clebsch_vlasov_tensor,
+       clebsch_vlasov_map, clebsch_pushforward_matrix,
+       un_hermitian_basis, un_structure_constants,
+       weyl_vlasov_matrix, spectral_pushforward_bracket,
+       vlasov_moment_flat_bracket, vlasov_moment_direct_bracket
+
+include("equations/vlasov.jl")
+
 export invariants, invariant_names, integrate, Trajectory, deviation,
        drift, absolute_drift, growth, poisson_defect, entropy_production
 export energyplot, stateplot, sweepplot, convergenceplot,

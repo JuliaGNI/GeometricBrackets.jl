@@ -10,10 +10,10 @@ Structure-preserving discretisations of the Poisson brackets of one-dimensional 
 partial differential equations, with the discrete brackets, Hamiltonians, Casimirs and
 geometric integrators kept as separate, composable objects.
 
-The package collects the prototype discretisations and numerical experiments behind three
+The package collects the prototype discretisations and numerical experiments behind several
 manuscripts on discrete Poisson brackets, and turns the structural claims they make — exact
 antisymmetry, the Jacobi identity or its failure, conservation of Hamiltonians and Casimirs —
-into a test suite and twenty-two verification scripts.
+into a test suite and verification scripts.
 
 Three equations are covered:
 
