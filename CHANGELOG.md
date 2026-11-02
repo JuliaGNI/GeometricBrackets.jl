@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- SimpleSplines 0.4 is supported alongside 0.3: `SimpleSplines = "0.3.1, 0.4"`. No name or
+  method of GeometricBrackets changes. The `evaluate` that this package re-exports follows
+  SimpleSplines 0.4: a `Float64` spline evaluated at a `Float32` point returns a `Float32`.
+
 ### Added
 
 - `src/equations/vlasov.jl` — finite-dimensional Poisson bracket constructors and
