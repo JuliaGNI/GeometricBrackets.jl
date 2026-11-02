@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test/equations/vlasov.jl`, `docs/src/vlasov.md` and `scripts/verify_vlasov_brackets.jl`
   (registered in `scripts/run_all.jl` and `docs/src/scripts.md`).
 
+### Changed
+
+- **The `Sparspak` floor rises from 0.3 to 0.3.10.** The `SparspakLU` solver of the mixed
+  formulation runs through the SimpleSolvers Sparspak extension, which calls
+  `Sparspak.SparseCSCInterface.sparspaklu(A; factorize = false)` and
+  `sparspaklu!(F, A; allow_pattern_change = false)`. `SparseCSCInterface` first appears in 0.3.3,
+  the `factorize` keyword in 0.3.4, and the `allow_pattern_change` keyword in 0.3.10; below
+  0.3.10 the package fails to precompile or the mixed-formulation tests error.
+- `test/Project.toml` gives `SafeTestsets` a `[compat]` entry, `"0.0.1, 0.1"`. The test suite
+  passes at 0.0.1, the oldest release.
+
 ## [0.3.1] — 2026-10-24
 
 The Julia floor rises from 1.11 to 1.12, so this version cannot be installed on Julia 1.11.
