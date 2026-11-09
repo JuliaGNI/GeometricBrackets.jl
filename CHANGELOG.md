@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The `names` field of `Trajectory` is concretely typed: `names::NTuple{N, Symbol}`, with
+  the number of invariants `N` as a third type parameter, `Trajectory{T, NT, N}`. The field
+  was a bare `NTuple`, so every read of `traj.names` was type-unstable. A method that
+  dispatches on `Trajectory` or `Trajectory{T}` is unaffected.
+
 ## [0.3.2] — 2026-11-02
 
 ### Changed
