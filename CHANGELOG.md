@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Breaking Changes
 
 - The `names` field of `Trajectory` is concretely typed: `names::NTuple{N, Symbol}`, with
   the number of invariants `N` as a third type parameter, `Trajectory{T, NT, N}`. The field
-  was a bare `NTuple`, so every read of `traj.names` was type-unstable. A method that
-  dispatches on `Trajectory` or `Trajectory{T}` is unaffected.
+  was a bare `NTuple`, so every read of `traj.names` was type-unstable. The explicit
+  two-parameter construction `Trajectory{T, NT}(t, reference, deviation, names, final)` no
+  longer exists and throws a `MethodError`; write `Trajectory{T, NT, N}(…)`, or take the
+  `Trajectory` that `integrate` returns. A method that dispatches on `Trajectory`,
+  `Trajectory{T}` or `Trajectory{T, NT}` is unaffected.
 
 ## [0.3.2] — 2026-11-02
 
