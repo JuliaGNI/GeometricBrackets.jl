@@ -102,11 +102,11 @@ noise can be an order of magnitude below the true envelope — so a plot built f
 shows a method conserving an invariant far better than it does. The invariants are therefore
 evaluated at *every* step and only the reporting is windowed.
 """
-struct Trajectory{T, NT}
+struct Trajectory{T, NT, N}
     t::Vector{T}
     reference::NT
     deviation::Matrix{T}
-    names::NTuple
+    names::NTuple{N, Symbol}
     final::Vector{T}
 end
 
@@ -180,7 +180,7 @@ function integrate(sys, integ::Integrator{T}, û₀::AbstractVector, nsteps::Int
         dev[:, j] .= peak
     end
 
-    Trajectory{T, typeof(ref)}(t, ref, dev, names, û)
+    Trajectory{T, typeof(ref), length(names)}(t, ref, dev, names, û)
 end
 
 @doc raw"""
