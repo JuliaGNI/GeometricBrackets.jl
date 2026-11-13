@@ -71,3 +71,19 @@
   convergence.
 - **kind:** upstream
 - **found:** #43
+
+### K11 · `miura_invert` turns every exception of its Newton solve into `nothing`, not only a singular `L`.
+
+- **location:** `src/brackets.jl:926`
+- **evidence:** The Newton step wraps `Δ = L \ r` in `try … catch` with no exception type, so a
+  `MethodError` from a wrong argument type, an `InterruptException` or a bug in a called method
+  returns the documented `nothing` ("no preimage"). `L = miura_derivative(s, v)` is a
+  `Matrix{Float64}`, and `\` on a singular one raises `SingularException`. On
+  `s = SplineSpace(20, 3)` with `û = project(s, x -> -0.6 + sin(x) + 0.4cos(2x))` and
+  `λ = miura_lambda(s, û)`, an `û` of a `Real` subtype that defines `-` and `abs` but not the
+  arithmetic of `\` makes `L \ r` raise `MethodError`, and `miura_invert(s, ûo; λ = λ)` returns
+  `nothing` without an error; `miura_invert(s, û; λ = λ)` converges. The fix catches
+  `SingularException` (and `LAPACKException`, should a solver raise it) and rethrows every other
+  exception.
+- **kind:** defect
+- **found:** 2026-11-13
