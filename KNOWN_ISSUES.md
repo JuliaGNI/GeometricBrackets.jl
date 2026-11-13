@@ -80,9 +80,10 @@
   returns the documented `nothing` ("no preimage"). `L = miura_derivative(s, v)` is a
   `Matrix{Float64}`, and `\` on a singular one raises `SingularException`. On
   `s = SplineSpace(20, 3)` with `û = project(s, x -> -0.6 + sin(x) + 0.4cos(2x))` and
-  `λ = miura_lambda(s, û)`, an `û` of a `Real` subtype that defines `-` and `abs` but not the
-  arithmetic of `\` makes `L \ r` raise `MethodError`, and `miura_invert(s, ûo; λ = λ)` returns
-  `nothing` without an error; `miura_invert(s, û; λ = λ)` converges. The fix catches
+  `λ = miura_lambda(s, û)`, `ûo = Opaque.(û)` for a `struct Opaque <: Real` that defines
+  `-(::Float64, ::Opaque)` and `abs` but not the arithmetic of `\` makes `L \ r` raise
+  `MethodError`, and `miura_invert(s, ûo; λ = λ)` returns `nothing` without an error;
+  `miura_invert(s, û; λ = λ)` converges. The fix catches
   `SingularException` (and `LAPACKException`, should a solver raise it) and rethrows every other
   exception.
 - **kind:** defect
