@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] — 2026-11-14
 
 ### Breaking Changes
 
@@ -14,8 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was a bare `NTuple`, so every read of `traj.names` was type-unstable. The explicit
   two-parameter construction `Trajectory{T, NT}(t, reference, deviation, names, final)` no
   longer exists and throws a `MethodError`; write `Trajectory{T, NT, N}(…)`, or take the
-  `Trajectory` that `integrate` returns. A method that dispatches on `Trajectory`,
-  `Trajectory{T}` or `Trajectory{T, NT}` is unaffected.
+  `Trajectory` that `integrate` returns. The constructor without type parameters,
+  `Trajectory(t, reference, deviation, names, final)`, accepts only a tuple of `Symbol`s as
+  `names`; any other tuple, such as one of strings, throws a `MethodError`. A method that
+  dispatches on `Trajectory`, `Trajectory{T}` or `Trajectory{T, NT}` is unaffected.
 
 ## [0.3.2] — 2026-11-02
 
