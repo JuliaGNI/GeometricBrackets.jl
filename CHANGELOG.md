@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — targeting 0.4.1
+
+### Changed
+
+- SimpleSplines 0.5 is supported alongside 0.3 and 0.4: `SimpleSplines = "0.3.1, 0.4, 0.5"`.
+  This is a compat-only change; no name or method of GeometricBrackets changes. SimpleSplines
+  0.5 throws an `ArgumentError` for a mesh that 0.4 built silently and wrong — an overflowing
+  domain length, or breakpoints that are not finite and strictly increasing — and it fixes the
+  derivatives of a periodic basis at the seam for `ForwardDiff.Dual` and the double count just
+  below the right end in periodic `evaluate`.
+
 ## [0.4.0] — 2026-11-14
 
 ### Breaking Changes
